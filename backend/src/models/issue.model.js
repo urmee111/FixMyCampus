@@ -179,22 +179,30 @@ export async function listStatusHistory(issueId) {
 
 // ---------- my issues, status changes, similar issues, stats ----------
 
-// GET /my/issues: the issues created by `userId`, newest first (same shape as the list)
+// GET /my/issues: the issues created by `userId`, newest first (same item shape as the list),
+// plus how many of them are in each status: { Open, "In Progress", Resolved, total }.
+// The counts are taken from the same rows as the items, so the two can never disagree.
 export async function listByUser(userId) {
   const result = await query(
     `${ISSUE_SELECT} WHERE i.created_by = $2 ORDER BY i.created_at DESC, i.id DESC`,
     [userId, userId],
   );
-  return result.rows.map(toIssue);
+  const items = result.rows.map(toIssue);
+
+  const counts = Object.fromEntries(STATUSES.map((status) => [status, 0]));
+  for (const issue of items) counts[issue.status] += 1;
+  counts.total = items.length;
+
+  return { items, counts };
 }
 
 // PATCH status, all in ONE transaction (all saved or nothing):
 //   1. UPDATE the issue: new status, updated_at, resolved_at (now() when Resolved, NULL otherwise = reopen)
 //   2. INSERT a status_history row
-//   3. if the admin wrote a note, INSERT it as a comment by the admin (shown with the "Official" badge)
+//   3. if there is a `commentText`, INSERT it as a comment by the admin (shown with the "Official" badge)
 // The AND status = $3 makes it safe against two admins clicking at once: if the status is no longer
 // `oldStatus`, nothing is changed and we return false (the controller answers 409).
-export async function updateStatus(id, { oldStatus, newStatus, note, changedBy }) {
+export async function updateStatus(id, { oldStatus, newStatus, note, commentText, changedBy }) {
   return withTransaction(async (client) => {
     const updated = await client.query(
       `UPDATE issues
@@ -213,8 +221,8 @@ export async function updateStatus(id, { oldStatus, newStatus, note, changedBy }
       [id, oldStatus, newStatus, changedBy, note],
     );
 
-    if (note) {
-      await client.query('INSERT INTO comments (issue_id, user_id, text) VALUES ($1, $2, $3)', [id, changedBy, note]);
+    if (commentText) {
+      await client.query('INSERT INTO comments (issue_id, user_id, text) VALUES ($1, $2, $3)', [id, changedBy, commentText]);
     }
     return true;
   });

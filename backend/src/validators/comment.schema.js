@@ -3,10 +3,12 @@
 
 import { z } from 'zod';
 
+const EMPTY_MESSAGE = 'Comment cannot be empty';
+
 export const createCommentSchema = z.object({
   text: z
-    .string({ error: 'Comment is required' })
+    .string({ error: EMPTY_MESSAGE }) // field missing or not text
     .trim() // whitespace-only becomes "" and fails the next rule
-    .min(1, 'Comment is required')
+    .min(1, EMPTY_MESSAGE)
     .max(500, 'Comment must be at most 500 characters'),
 });

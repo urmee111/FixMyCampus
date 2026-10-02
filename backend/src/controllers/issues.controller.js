@@ -136,7 +136,7 @@ export const toggleUpvote = asyncHandler(async (req, res) => {
 // Admin only (the route already rejects students with 403).
 // Allowed: Open -> In Progress, Open -> Resolved, In Progress -> Resolved, Resolved -> Open (reopen).
 // The model also saves a status_history row, sets/clears resolved_at, and posts the optional note as an
-// admin comment ("Official" badge), all in one transaction.
+// admin comment ("Status changed to <status>: <note>", shown with the "Official" badge), all in one transaction.
 export const updateStatus = asyncHandler(async (req, res) => {
   const { id } = req.validated.params;
   const { status: newStatus, note } = req.validated.body;
@@ -145,7 +145,7 @@ export const updateStatus = asyncHandler(async (req, res) => {
   const issue = await loadIssueOr404(id, adminId);
 
   if (issue.status === newStatus) {
-    const message = `The issue is already "${newStatus}"`;
+    const message = `Issue is already ${newStatus}`;
     throw AppError.validation(message, { status: message });
   }
 
@@ -159,6 +159,8 @@ export const updateStatus = asyncHandler(async (req, res) => {
     oldStatus: issue.status,
     newStatus,
     note: note || null, // no note (or a blank one) means no history note and no comment
+    // the note is also posted as an admin comment, e.g. "Status changed to In Progress: Electrician assigned"
+    commentText: note ? `Status changed to ${newStatus}: ${note}` : null,
     changedBy: adminId,
   });
   // false = another admin changed the status a moment ago, so nothing was saved
