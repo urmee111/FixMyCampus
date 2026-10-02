@@ -6,7 +6,7 @@ A complaint and maintenance tracker for campus life. Students report broken fans
 
 | What | Link |
 |---|---|
-| Web app (frontend) | `<VERCEL_LINK>` |
+| Web app (frontend) | `<FRONTEND_LINK>` |
 | API (backend) | https://fixmycampus-api.onrender.com |
 | API health check | https://fixmycampus-api.onrender.com/health |
 | Source code | https://github.com/urmee111/FixMyCampus |
@@ -62,7 +62,7 @@ A complaint and maintenance tracker for campus life. Students report broken fans
 | Database | PostgreSQL on Supabase (plain SQL, no ORM) |
 | Photo storage | Supabase Storage |
 | API testing | Thunder Client / Postman |
-| Hosting | Vercel (frontend), Render (backend), Supabase (database and storage) |
+| Hosting | Vercel or Netlify (frontend), Render (backend), Supabase (database and storage) |
 
 ## Architecture
 
@@ -140,6 +140,6 @@ npm run dev              # http://localhost:5173
 
 | Name | Part |
 |---|---|
-| Noushin Anamika Urmee | Backend, database, deployment |
-| Arina-Arni | Frontend |
-| `<third member>` | `<part>` |
+| Noushin Anamika Urmee | Backend API (13 endpoints), database design, authentication and security, deployment on Render and Supabase, documentation |
+| Arina Afrin | Frontend: React pages, UI and UX design, dark mode and mobile layout, demo video |
+| Tanjim Hasan | Frontend deployment, testing and QA |
