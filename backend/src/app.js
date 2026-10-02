@@ -5,7 +5,7 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
-import { env, isProduction } from './config/env.js';
+import { allowedOrigins, isProduction } from './config/env.js';
 import routes from './routes/index.js';
 import { notFound } from './middleware/notFound.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -17,19 +17,10 @@ app.set('trust proxy', 1);
 
 app.use(helmet()); // safe default security headers
 
-// CORS: only our frontend (FRONTEND_URL) and localhost (any port) may call the API from a browser.
-// Requests with no Origin header (Postman, curl, Render health checks) are allowed.
-const localhost = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || origin === env.frontendUrl || localhost.test(origin)) {
-        return callback(null, true);
-      }
-      callback(null, false); // browser blocks it
-    },
-  }),
-);
+// CORS: a browser may call the API only from the addresses in FRONTEND_URL (plus http://localhost:5173
+// when not in production). Other websites get no CORS headers, so the browser blocks them.
+// Requests with no Origin header (Postman, curl, Render health checks) are not affected by CORS.
+app.use(cors({ origin: allowedOrigins }));
 
 app.use(express.json({ limit: '100kb' })); // parse JSON bodies
 app.use(morgan(isProduction ? 'combined' : 'dev')); // request log
