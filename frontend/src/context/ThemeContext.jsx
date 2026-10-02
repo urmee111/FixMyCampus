@@ -1,34 +1,71 @@
-// Light / dark mode. Adds or removes the "dark" class on <html> (Tailwind's `dark:` classes react to it)
-// and remembers the choice in localStorage.
-// Use it through:  const { theme, toggleTheme } = useTheme();
+import React, { createContext, useContext, useEffect, useState } from 'react'
 
-import { createContext, useContext, useEffect, useState } from 'react';
+const THEME_STORAGE_KEY = 'fixmycampus_theme'
 
-const STORAGE_KEY = 'theme';
-const ThemeContext = createContext(null);
-
-// Saved choice first, otherwise follow the computer's setting
-function getInitialTheme() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved === 'light' || saved === 'dark') return saved;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
+export const ThemeContext = createContext({
+  theme: 'system',
+  resolvedTheme: 'light',
+  setTheme: () => {},
+})
 
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(getInitialTheme);
+  const [theme, setThemeState] = useState(() => {
+    try {
+      return localStorage.getItem(THEME_STORAGE_KEY) || 'system'
+    } catch {
+      return 'system'
+    }
+  })
+
+  const [resolvedTheme, setResolvedTheme] = useState('light')
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-    localStorage.setItem(STORAGE_KEY, theme);
-  }, [theme]);
+    const root = document.documentElement
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
 
-  const toggleTheme = () => setTheme((current) => (current === 'dark' ? 'light' : 'dark'));
+    const applyTheme = () => {
+      const isDark = theme === 'dark' || (theme === 'system' && mediaQuery.matches)
+      setResolvedTheme(isDark ? 'dark' : 'light')
 
-  return <ThemeContext.Provider value={{ theme, toggleTheme }}>{children}</ThemeContext.Provider>;
+      if (isDark) {
+        root.classList.add('dark')
+      } else {
+        root.classList.remove('dark')
+      }
+    }
+
+    applyTheme()
+
+    const handleSystemChange = () => {
+      if (theme === 'system') {
+        applyTheme()
+      }
+    }
+
+    mediaQuery.addEventListener('change', handleSystemChange)
+    return () => mediaQuery.removeEventListener('change', handleSystemChange)
+  }, [theme])
+
+  const setTheme = (newTheme) => {
+    setThemeState(newTheme)
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, newTheme)
+    } catch (e) {
+      console.error('Failed to save theme in localStorage', e)
+    }
+  }
+
+  return (
+    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  )
 }
 
 export function useTheme() {
-  const context = useContext(ThemeContext);
-  if (!context) throw new Error('useTheme must be used inside <ThemeProvider>');
-  return context;
+  const context = useContext(ThemeContext)
+  if (!context) {
+    throw new Error('useTheme must be used within a ThemeProvider')
+  }
+  return context
 }

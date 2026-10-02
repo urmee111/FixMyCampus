@@ -1,40 +1,50 @@
-// Text input with a label and an inline error message.
-//   <Input label="Email" type="email" value={email} onChange={...} error={errors.email} />
-// The label is linked to the input (htmlFor/id) and the error is announced to screen readers.
+import React, { forwardRef } from 'react'
+import { cn } from '../../lib/utils'
 
-import { useId } from 'react';
-
-export default function Input({ label, error, hint, id, className = '', ...props }) {
-  const autoId = useId();
-  const inputId = id || autoId;
-  const errorId = `${inputId}-error`;
-  const hintId = `${inputId}-hint`;
-
+export const Input = forwardRef(function Input(
+  {
+    className,
+    type = 'text',
+    error,
+    leftIcon,
+    rightIcon,
+    disabled = false,
+    ...props
+  },
+  ref
+) {
   return (
-    <div className={className}>
-      <label htmlFor={inputId} className="mb-1 block text-sm font-medium text-slate-800 dark:text-slate-200">
-        {label}
-        {props.required && <span aria-hidden="true"> *</span>}
-      </label>
+    <div className="relative flex items-center w-full">
+      {leftIcon && (
+        <div className="absolute left-3.5 text-slate-400 dark:text-slate-500 pointer-events-none flex items-center justify-center">
+          {leftIcon}
+        </div>
+      )}
       <input
-        id={inputId}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? errorId : hint ? hintId : undefined}
-        className={`block w-full rounded-md border bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-400 ${
-          error ? 'border-red-600 dark:border-red-400' : 'border-slate-300 dark:border-slate-700'
-        }`}
+        ref={ref}
+        type={type}
+        disabled={disabled}
+        aria-invalid={Boolean(error)}
+        className={cn(
+          'w-full bg-white dark:bg-slate-900/90 text-slate-900 dark:text-slate-100 text-sm rounded-xl border transition-all duration-150',
+          'placeholder:text-slate-400 dark:placeholder:text-slate-500',
+          'focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500',
+          leftIcon ? 'pl-10' : 'pl-3.5',
+          rightIcon ? 'pr-10' : 'pr-3.5',
+          'py-2.5',
+          error
+            ? 'border-rose-300 dark:border-rose-700/80 focus:ring-rose-500/20 focus:border-rose-500'
+            : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700',
+          disabled && 'bg-slate-50 dark:bg-slate-900/40 text-slate-400 cursor-not-allowed border-slate-200 dark:border-slate-800',
+          className
+        )}
         {...props}
       />
-      {hint && !error && (
-        <p id={hintId} className="mt-1 text-xs text-slate-600 dark:text-slate-400">
-          {hint}
-        </p>
-      )}
-      {error && (
-        <p id={errorId} role="alert" className="mt-1 text-sm text-red-700 dark:text-red-400">
-          {error}
-        </p>
+      {rightIcon && (
+        <div className="absolute right-3.5 text-slate-400 dark:text-slate-500 flex items-center justify-center">
+          {rightIcon}
+        </div>
       )}
     </div>
-  );
-}
+  )
+})

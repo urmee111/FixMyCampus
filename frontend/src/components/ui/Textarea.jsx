@@ -1,51 +1,33 @@
-// Multi-line text box with a label, an inline error and an optional character counter.
-//   <Textarea label="Comment" maxLength={500} value={text} onChange={...} error={errors.text} />
-// The counter ("12/500") shows when you pass both `maxLength` and a string `value`.
+import React, { forwardRef } from 'react'
+import { cn } from '../../lib/utils'
 
-import { useId } from 'react';
-
-export default function Textarea({ label, error, hint, id, className = '', rows = 4, ...props }) {
-  const autoId = useId();
-  const textareaId = id || autoId;
-  const errorId = `${textareaId}-error`;
-  const hintId = `${textareaId}-hint`;
-  const showCount = props.maxLength && typeof props.value === 'string';
-
+export const Textarea = forwardRef(function Textarea(
+  {
+    className,
+    error,
+    rows = 4,
+    disabled = false,
+    ...props
+  },
+  ref
+) {
   return (
-    <div className={className}>
-      <label htmlFor={textareaId} className="mb-1 block text-sm font-medium text-slate-800 dark:text-slate-200">
-        {label}
-        {props.required && <span aria-hidden="true"> *</span>}
-      </label>
-      <textarea
-        id={textareaId}
-        rows={rows}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? errorId : hint ? hintId : undefined}
-        className={`block w-full rounded-md border bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-400 ${
-          error ? 'border-red-600 dark:border-red-400' : 'border-slate-300 dark:border-slate-700'
-        }`}
-        {...props}
-      />
-      <div className="mt-1 flex justify-between gap-2">
-        <div>
-          {hint && !error && (
-            <p id={hintId} className="text-xs text-slate-600 dark:text-slate-400">
-              {hint}
-            </p>
-          )}
-          {error && (
-            <p id={errorId} role="alert" className="text-sm text-red-700 dark:text-red-400">
-              {error}
-            </p>
-          )}
-        </div>
-        {showCount && (
-          <p className="text-xs text-slate-600 dark:text-slate-400">
-            {props.value.length}/{props.maxLength}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
+    <textarea
+      ref={ref}
+      rows={rows}
+      disabled={disabled}
+      aria-invalid={Boolean(error)}
+      className={cn(
+        'w-full bg-white dark:bg-slate-900/90 text-slate-900 dark:text-slate-100 text-sm rounded-xl border transition-all duration-150 p-3.5',
+        'placeholder:text-slate-400 dark:placeholder:text-slate-500',
+        'focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 resize-y',
+        error
+          ? 'border-rose-300 dark:border-rose-700/80 focus:ring-rose-500/20 focus:border-rose-500'
+          : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700',
+        disabled && 'bg-slate-50 dark:bg-slate-900/40 text-slate-400 cursor-not-allowed border-slate-200 dark:border-slate-800',
+        className
+      )}
+      {...props}
+    />
+  )
+})

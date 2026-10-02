@@ -1,9 +1,13 @@
-// Vite config: React + Tailwind CSS v4 (the official @tailwindcss/vite plugin, no tailwind.config.js needed).
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { fileURLToPath, URL } from 'node:url'
 
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import tailwindcss from '@tailwindcss/vite';
-
+// https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
-});
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+})

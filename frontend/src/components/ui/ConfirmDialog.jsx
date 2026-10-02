@@ -1,64 +1,55 @@
-// "Are you sure?" popup (plan: confirm before delete).
-//   <ConfirmDialog open={showConfirm} title="Delete this issue?" message="This cannot be undone."
-//                  confirmLabel="Delete" danger loading={deleting}
-//                  onConfirm={handleDelete} onCancel={() => setShowConfirm(false)} />
-//
-// Uses the browser's built-in <dialog>: it traps the keyboard focus, closes on Esc,
-// and screen readers treat it as a real dialog, so we get accessibility for free.
+import React from 'react'
+import { Modal } from './Modal'
+import { Button } from './Button'
+import { AlertTriangle } from 'lucide-react'
 
-import { useEffect, useRef } from 'react';
-import Button from './Button';
-
-export default function ConfirmDialog({
-  open,
-  title,
-  message,
-  confirmLabel = 'Confirm',
-  cancelLabel = 'Cancel',
-  danger = false,
-  loading = false,
+export function ConfirmDialog({
+  isOpen,
+  onClose,
   onConfirm,
-  onCancel,
+  title = 'Are you sure?',
+  description = 'This action cannot be undone.',
+  confirmText = 'Confirm',
+  cancelText = 'Cancel',
+  isDestructive = true,
+  isLoading = false,
 }) {
-  const dialogRef = useRef(null);
-
-  // Open / close the native dialog whenever the `open` prop changes
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
-    if (!open && dialog.open) dialog.close();
-  }, [open]);
-
   return (
-    <dialog
-      ref={dialogRef}
-      aria-labelledby="confirm-dialog-title"
-      // Esc key: let the parent decide (it sets open=false, and the effect above closes the dialog)
-      onCancel={(event) => {
-        event.preventDefault();
-        if (!loading) onCancel();
-      }}
-      // Click on the dark backdrop (the <dialog> itself, not the content) cancels too
-      onClick={(event) => {
-        if (event.target === event.currentTarget && !loading) onCancel();
-      }}
-      className="m-auto w-full max-w-md rounded-lg bg-white p-0 text-slate-900 shadow-xl backdrop:bg-black/50 dark:bg-slate-900 dark:text-slate-100"
-    >
-      <div className="p-6">
-        <h2 id="confirm-dialog-title" className="text-lg font-semibold">
+    <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-md">
+      <div className="flex flex-col items-center text-center pt-2 pb-1">
+        {isDestructive && (
+          <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-4 ring-8 ring-rose-50 dark:ring-rose-950/20">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+        )}
+        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
           {title}
-        </h2>
-        {message && <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{message}</p>}
-        <div className="mt-6 flex justify-end gap-3">
-          <Button variant="secondary" onClick={onCancel} disabled={loading}>
-            {cancelLabel}
+        </h3>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed max-w-sm">
+          {description}
+        </p>
+
+        <div className="flex items-center justify-center gap-3 mt-6 w-full">
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1"
+            onClick={onClose}
+            disabled={isLoading}
+          >
+            {cancelText}
           </Button>
-          <Button variant={danger ? 'danger' : 'primary'} onClick={onConfirm} loading={loading}>
-            {confirmLabel}
+          <Button
+            type="button"
+            variant={isDestructive ? 'danger' : 'primary'}
+            className="flex-1"
+            isLoading={isLoading}
+            onClick={onConfirm}
+          >
+            {confirmText}
           </Button>
         </div>
       </div>
-    </dialog>
-  );
+    </Modal>
+  )
 }

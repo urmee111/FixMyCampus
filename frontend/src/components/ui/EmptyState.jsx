@@ -1,15 +1,33 @@
-// Shown when a list has nothing to show (plan: every page needs loading, empty and error states).
-//   <EmptyState title="No issues found" message="Try another filter." action={<Button>Clear filters</Button>} />
+import React from 'react'
+import { Inbox } from 'lucide-react'
+import { cn } from '../../lib/utils'
 
-import { Inbox } from 'lucide-react';
-
-export default function EmptyState({ icon: Icon = Inbox, title = 'Nothing here yet', message, action }) {
+export function EmptyState({
+  icon: Icon = Inbox,
+  title = 'No items found',
+  description = 'There are no records matching your current criteria.',
+  action,
+  className,
+}) {
   return (
-    <div className="flex flex-col items-center rounded-lg border border-dashed border-slate-300 px-6 py-12 text-center dark:border-slate-700">
-      <Icon aria-hidden="true" className="h-10 w-10 text-slate-500 dark:text-slate-400" />
-      <h2 className="mt-3 text-lg font-semibold">{title}</h2>
-      {message && <p className="mt-1 max-w-md text-sm text-slate-600 dark:text-slate-400">{message}</p>}
-      {action && <div className="mt-4">{action}</div>}
+    <div
+      className={cn(
+        'flex flex-col items-center justify-center text-center p-8 sm:p-12 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/20',
+        className
+      )}
+    >
+      <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 flex items-center justify-center shadow-xs border border-slate-200/80 dark:border-slate-700/80 mb-4">
+        <Icon className="w-6 h-6 stroke-[1.5]" />
+      </div>
+      <h3 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+        {title}
+      </h3>
+      {description && (
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 max-w-sm leading-relaxed">
+          {description}
+        </p>
+      )}
+      {action && <div className="mt-5">{action}</div>}
     </div>
-  );
+  )
 }

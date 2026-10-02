@@ -4,23 +4,28 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="FixMyCampus: report, upvote and track campus issues." />
-    <title>FixMyCampus</title>
+    <meta name="description" content="FixMyCampus — Premium Campus Complaint & Maintenance Tracking Platform. Report, track, and resolve campus infrastructure issues in real time." />
+    <title>FixMyCampus — Campus Maintenance Platform</title>
+    <!-- Google Fonts: Montserrat, Merriweather, and Source Code Pro -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Montserrat:wght@400;500;600;700;800&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Immediate theme application script to prevent FOUC -->
     <script>
-      // Set the saved theme BEFORE React loads, so dark mode doesn't flash white.
-      // (Same logic as ThemeContext.jsx.)
-      (function () {
+      (function() {
         try {
-          var saved = localStorage.getItem('theme');
-          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          if (saved === 'dark' || (!saved && prefersDark)) {
+          const storedTheme = localStorage.getItem('fixmycampus_theme');
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (storedTheme === 'dark' || (!storedTheme && prefersDark) || (storedTheme === 'system' && prefersDark)) {
             document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
           }
         } catch (e) {}
       })();
     </script>
   </head>
-  <body>
+  <body class="bg-surface-light-canvas dark:bg-surface-dark-canvas text-slate-900 dark:text-slate-100 antialiased selection:bg-brand-500 selection:text-white transition-colors duration-200">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

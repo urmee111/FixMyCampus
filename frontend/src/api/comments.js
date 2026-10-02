@@ -1,9 +1,30 @@
-// Comment endpoints. Returns response.data.data.
+import { apiRequest } from './client'
+import { MOCK_USERS } from '../data/mockData'
 
-import api from './client';
+const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
 
-// POST /issues/:id/comments  { text }  ->  the new comment
-export async function addComment(issueId, text) {
-  const response = await api.post(`/issues/${issueId}/comments`, { text });
-  return response.data.data;
+export async function addComment(issueId, text, currentUser = MOCK_USERS.student) {
+  if (USE_MOCK) {
+    await new Promise((res) => setTimeout(res, 260))
+    const newComment = {
+      id: Date.now(),
+      text,
+      createdAt: new Date().toISOString(),
+      author: {
+        id: currentUser.id,
+        name: currentUser.name,
+        role: currentUser.role,
+        avatar: currentUser.avatar,
+      },
+    }
+    return {
+      success: true,
+      data: { comment: newComment },
+    }
+  }
+
+  return apiRequest(`/issues/${issueId}/comments`, {
+    method: 'POST',
+    body: JSON.stringify({ text }),
+  })
 }

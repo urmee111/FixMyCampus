@@ -1,45 +1,76 @@
-// ROUTES ONLY. Nothing else belongs in this file (Member B is the only one who edits it).
+import React from 'react'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { ThemeProvider } from './context/ThemeContext'
+import { AuthProvider } from './context/AuthContext'
+import { ToastProvider } from './context/ToastContext'
+import { ProtectedRoute } from './components/auth/ProtectedRoute'
 
-import { Routes, Route, Navigate } from 'react-router-dom';
-import Layout from './components/layout/Layout';
-import ProtectedRoute from './routes/ProtectedRoute';
-import LoginPage from './pages/LoginPage';
-import SignupPage from './pages/SignupPage';
-import IssuesPage from './pages/IssuesPage';
-import ReportIssuePage from './pages/ReportIssuePage';
-import IssueDetailPage from './pages/IssueDetailPage';
-import EditIssuePage from './pages/EditIssuePage';
-import MyReportsPage from './pages/MyReportsPage';
-import AdminDashboardPage from './pages/AdminDashboardPage';
-import NotFoundPage from './pages/NotFoundPage';
+// Layouts
+import { PublicLayout } from './layouts/PublicLayout'
+import { AppLayout } from './layouts/AppLayout'
+import { AdminLayout } from './layouts/AdminLayout'
+
+// Pages
+import { Login } from './pages/auth/Login'
+import { Signup } from './pages/auth/Signup'
+import { Issues } from './pages/issues/Issues'
+import { IssueDetails } from './pages/issues/IssueDetails'
+import { EditIssue } from './pages/issues/EditIssue'
+import { ReportIssue } from './pages/issues/ReportIssue'
+import { MyReports } from './pages/student/MyReports'
+import { AdminDashboard } from './pages/admin/AdminDashboard'
+import { AdminLocations } from './pages/admin/AdminLocations'
+import { NotFound } from './pages/NotFound'
+import { Landing } from './pages/Landing'
 
 export default function App() {
   return (
-    <Routes>
-      {/* Every page is shown inside Layout (navbar + footer) */}
-      <Route element={<Layout />}>
-        <Route path="/" element={<Navigate to="/issues" replace />} />
+    <ThemeProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Landing />} />
 
-        {/* Public */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
+              {/* Public Auth Routes */}
+              <Route element={<PublicLayout />}>
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<Signup />} />
+              </Route>
 
-        {/* Any logged-in user */}
-        <Route element={<ProtectedRoute />}>
-          <Route path="/issues" element={<IssuesPage />} />
-          <Route path="/report" element={<ReportIssuePage />} />
-          <Route path="/issues/:id" element={<IssueDetailPage />} />
-          <Route path="/issues/:id/edit" element={<EditIssuePage />} />
-          <Route path="/my-reports" element={<MyReportsPage />} />
-        </Route>
+              {/* Student & General Application Routes (Protected) */}
+              <Route
+                element={
+                  <ProtectedRoute>
+                    <AppLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path="/issues" element={<Issues />} />
+                <Route path="/issues/:id" element={<IssueDetails />} />
+                <Route path="/issues/:id/edit" element={<EditIssue />} />
+                <Route path="/report" element={<ReportIssue />} />
+                <Route path="/my-reports" element={<MyReports />} />
+              </Route>
 
-        {/* Admin only */}
-        <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-          <Route path="/admin" element={<AdminDashboardPage />} />
-        </Route>
+              {/* Admin Protected Routes */}
+              <Route
+                element={
+                  <ProtectedRoute adminOnly>
+                    <AdminLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/locations" element={<AdminLocations />} />
+              </Route>
 
-        <Route path="*" element={<NotFoundPage />} />
-      </Route>
-    </Routes>
-  );
+              {/* Catch-all 404 */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </ToastProvider>
+      </AuthProvider>
+    </ThemeProvider>
+  )
 }

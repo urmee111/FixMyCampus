@@ -1,15 +1,24 @@
-// Loading spinner. `label` is read aloud by screen readers.
-//   <Spinner />   <Spinner size="sm" />   <Spinner size="lg" label="Loading issues" />
+import React from 'react'
+import { Loader2 } from 'lucide-react'
+import { cn } from '../../lib/utils'
 
-import { Loader2 } from 'lucide-react';
+export function Spinner({ size = 'md', className }) {
+  const sizes = {
+    xs: 'w-3.5 h-3.5',
+    sm: 'w-4 h-4',
+    md: 'w-5 h-5',
+    lg: 'w-7 h-7',
+    xl: 'w-9 h-9',
+  }
 
-const SIZES = { sm: 'h-4 w-4', md: 'h-6 w-6', lg: 'h-10 w-10' };
-
-export default function Spinner({ size = 'md', label = 'Loading', className = '' }) {
   return (
-    <span role="status" className={`inline-flex items-center ${className}`}>
-      <Loader2 aria-hidden="true" className={`animate-spin text-blue-600 dark:text-blue-400 ${SIZES[size]}`} />
-      <span className="sr-only">{label}</span>
-    </span>
-  );
+    <Loader2
+      className={cn(
+        'animate-spin text-brand-600 dark:text-brand-400',
+        sizes[size] || sizes.md,
+        className
+      )}
+      aria-label="Loading"
+    />
+  )
 }
