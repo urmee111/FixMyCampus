@@ -17,7 +17,8 @@ export const signupSchema = z.object({
   name: z
     .string({ error: 'Name is required' })
     .trim()
-    .min(1, 'Name is required')
+    .min(1, 'Name is required') // first rule so an empty name says "required"
+    .min(2, 'Name must be at least 2 characters')
     .max(80, 'Name must be at most 80 characters'),
   email,
   password: z
@@ -27,7 +28,7 @@ export const signupSchema = z.object({
     .max(72, 'Password must be at most 72 characters'), // bcrypt only reads 72 bytes
   role: z.enum(ROLES, { error: 'Role must be student or admin' }).default('student'),
   // Only checked when role is "admin"; the controller compares it to ADMIN_SIGNUP_CODE (403 if wrong)
-  adminCode: z.string().optional(),
+  adminCode: z.string().trim().optional(),
 });
 
 export const loginSchema = z.object({

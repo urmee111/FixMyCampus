@@ -5,9 +5,13 @@ import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 import { AppError } from '../utils/AppError.js';
 
-// Create a token for a user. Used by signup and login (controllers, later).
+const ALGORITHM = 'HS256';
+
+// Create a token for a user. Used by signup and login.
+// The token expires after JWT_EXPIRES_IN (e.g. "7d"); the frontend reads the `exp` claim.
 export function signToken(user) {
   return jwt.sign({ id: user.id, role: user.role }, env.jwtSecret, {
+    algorithm: ALGORITHM,
     expiresIn: env.jwtExpiresIn,
   });
 }
@@ -22,7 +26,9 @@ export function requireAuth(req, res, next) {
   }
 
   try {
-    const payload = jwt.verify(token, env.jwtSecret);
+    // Only accept the algorithm we sign with (blocks "alg: none" and similar tricks)
+    const payload = jwt.verify(token, env.jwtSecret, { algorithms: [ALGORITHM] });
+    if (!payload.id || !payload.role) throw new Error('Token payload is incomplete');
     req.user = { id: payload.id, role: payload.role };
     next();
   } catch (err) {

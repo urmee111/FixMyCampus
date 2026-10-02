@@ -7,7 +7,14 @@ import app from './app.js';
 
 checkEnv();
 
-app.listen(env.port, () => {
+// Express 5 gives startup errors (like "port already in use") to this callback, so we must check for them,
+// otherwise the message below would be printed even though the server never started.
+app.listen(env.port, (err) => {
+  if (err) {
+    console.error(`❌ Could not start the server on port ${env.port}: ${err.message}`);
+    console.error('   Is another copy of the backend already running? Stop it or change PORT in .env');
+    process.exit(1);
+  }
   console.log(`🚀 API running on http://localhost:${env.port}  (try /health)`);
 });
 

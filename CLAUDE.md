@@ -20,10 +20,10 @@ backend/
     config/                 env.js, db.js (pg Pool), supabase.js (photo storage)
     middleware/             auth, role, validate, errorHandler, notFound, rateLimit, upload
     routes/                 one file per URL prefix; wire middleware + controller
-    controllers/            handle request/response (STUBS returning 501 until implemented)
+    controllers/            handle request/response (all 13 endpoints are implemented)
     models/                 ALL SQL lives here
     validators/             zod schemas
-    utils/                  AppError, asyncHandler, response (ok/fail), constants
+    utils/                  AppError, asyncHandler, response (ok/fail), constants, photoStorage (Supabase upload/delete)
 frontend/
   src/
     App.jsx                 ROUTES ONLY            main.jsx  providers

@@ -1,10 +1,11 @@
-// "My" endpoints (plan Section 6.2, #11). STUB: returns 501 for now.
+// "My" endpoints (plan Section 6.2, #11).
 
+import * as issueModel from '../models/issue.model.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { fail } from '../utils/response.js';
+import { ok } from '../utils/response.js';
 
-// GET /my/issues -> 200 list of the logged-in user's issues
+// GET /my/issues -> 200 { items } : the logged-in user's own issues, newest first
 export const getMyIssues = asyncHandler(async (req, res) => {
-  // TODO: issue.model.listByUser(req.user.id)
-  fail(res, 501, 'NOT_IMPLEMENTED', 'TODO');
+  const items = await issueModel.listByUser(req.user.id);
+  ok(res, { items });
 });

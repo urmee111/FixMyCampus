@@ -28,6 +28,16 @@ export function errorHandler(err, req, res, next) {
 
   // 4. A few known PostgreSQL errors -> friendly 4xx instead of a 500
   if (err.code === '23505') return fail(res, 409, 'CONFLICT', 'That record already exists');
+  if (err.code === '23503') {
+    // Foreign key violation: we tried to point at a row that does not exist.
+    // If it is a user column, the token is valid but the user is gone (e.g. the database was reset):
+    // 401 makes the frontend log out. Otherwise the issue does not exist (or was deleted a moment ago).
+    const userColumns = ['user_id', 'created_by', 'changed_by'];
+    if (userColumns.some((column) => err.constraint?.includes(column))) {
+      return fail(res, 401, 'UNAUTHORIZED', 'Your account no longer exists. Please sign up or log in again');
+    }
+    return fail(res, 404, 'NOT_FOUND', 'Issue not found');
+  }
   if (['23514', '22P02', '22003'].includes(err.code)) {
     return fail(res, 400, 'VALIDATION_ERROR', 'Invalid value in request');
   }
