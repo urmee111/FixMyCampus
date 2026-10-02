@@ -3,10 +3,9 @@
 A complaint and maintenance tracker for campus life. Students report broken fans, leaking taps, dead street lights and dirty washrooms. Peers upvote the issues that matter most, and staff assign, track and resolve them in the open, so nobody wonders whether a complaint was lost.
 
 ## Live links
-
 | What | Link |
 |---|---|
-| Web app (frontend) | `<FRONTEND_LINK>` |
+| Web app (frontend) | Run it locally (steps below). It connects to the live API. |
 | API (backend) | https://fixmycampus-api.onrender.com |
 | API health check | https://fixmycampus-api.onrender.com/health |
 | Source code | https://github.com/urmee111/FixMyCampus |
@@ -63,7 +62,7 @@ A complaint and maintenance tracker for campus life. Students report broken fans
 | Database | PostgreSQL on Supabase (plain SQL, no ORM) |
 | Photo storage | Supabase Storage |
 | API testing | Thunder Client / Postman |
-| Hosting | Vercel or Netlify (frontend), Render (backend), Supabase (database and storage) |
+| Hosting | Render (backend), Supabase (database and storage). The frontend runs locally against the live API. |
 
 ## Architecture
 
