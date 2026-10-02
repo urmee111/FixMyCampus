@@ -33,7 +33,7 @@ export function ThemeToggle({ className }) {
         onClick={() => setIsOpen((prev) => !prev)}
         aria-label="Change theme appearance"
         aria-expanded={isOpen}
-        className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+        className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors "
       >
         <ActiveIcon className="w-4 h-4 transition-transform duration-200" />
       </button>

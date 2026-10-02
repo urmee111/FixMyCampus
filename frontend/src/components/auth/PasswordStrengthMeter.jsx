@@ -13,11 +13,11 @@ export function calculatePasswordStrength(password = '') {
   }
 
   const levels = [
-    { label: 'Too weak', color: 'bg-rose-500', text: 'text-rose-600 dark:text-rose-400' },
-    { label: 'Weak', color: 'bg-rose-500', text: 'text-rose-600 dark:text-rose-400' },
+    { label: 'Too weak', color: 'bg-red-500', text: 'text-red-600 dark:text-red-400' },
+    { label: 'Weak', color: 'bg-red-500', text: 'text-red-600 dark:text-red-400' },
     { label: 'Fair', color: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400' },
     { label: 'Good', color: 'bg-brand-500', text: 'text-brand-600 dark:text-brand-400' },
-    { label: 'Strong password', color: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400' },
+    { label: 'Strong password', color: 'bg-green-500', text: 'text-green-600 dark:text-green-400' },
   ]
 
   const current = levels[score] || levels[0]
@@ -50,7 +50,7 @@ export function PasswordStrengthMeter({ password = '', className }) {
       </div>
       <div className="flex items-center justify-between text-[11px]">
         <span className={cn('font-semibold', textColor)}>{label}</span>
-        <span className="text-slate-400">Min 6 characters</span>
+        <span className="text-slate-600">Min 6 characters</span>
       </div>
     </div>
   )

@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useToast } from '../../hooks/useToast'
 import { Avatar } from '../ui/Avatar'
-import { LogOut, Shield, User, RefreshCw, ChevronDown } from 'lucide-react'
+import { LogOut, Shield, User, ChevronDown } from 'lucide-react'
 import { cn } from '../../lib/utils'
+import { formatRole } from '../../lib/formatters'
 
 export function UserMenu({ className }) {
-  const { user, logout, switchRole, isAdmin, canPreviewRole } = useAuth()
+  const { user, logout, isAdmin } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false)
@@ -19,21 +20,26 @@ export function UserMenu({ className }) {
         setIsOpen(false)
       }
     }
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') setIsOpen(false)
+    }
     document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
   }, [])
 
   if (!user) {
     return (
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => navigate('/login')}
-          className="text-xs font-semibold px-3 py-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-        >
-          Sign in
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={() => navigate('/login')}
+        className="text-sm font-semibold px-3 py-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+      >
+        Log in
+      </button>
     )
   }
 
@@ -43,32 +49,29 @@ export function UserMenu({ className }) {
     navigate('/login')
   }
 
-  const handleRoleToggle = () => {
-    const nextRole = isAdmin ? 'student' : 'admin'
-    switchRole(nextRole)
+  const go = (path) => {
+    navigate(path)
     setIsOpen(false)
-    toast.info(`Switched role preview to ${nextRole.toUpperCase()}`)
-    if (nextRole === 'admin') {
-      navigate('/admin')
-    } else {
-      navigate('/issues')
-    }
   }
+
+  const itemClass =
+    'w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left'
 
   return (
     <div className={cn('relative inline-block', className)} ref={menuRef}>
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        aria-label="User navigation menu"
+        aria-label="Account menu"
+        aria-haspopup="menu"
         aria-expanded={isOpen}
-        className="flex items-center gap-2 p-1 pl-1.5 pr-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+        className="flex items-center gap-2 p-1 pl-1.5 pr-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
       >
-        <Avatar src={user.avatar} name={user.name} size="xs" />
-        <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 hidden sm:inline max-w-[120px] truncate">
+        <Avatar name={user.name} size="xs" />
+        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 hidden sm:inline max-w-[120px] truncate">
           {user.name.split(' ')[0]}
         </span>
-        <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+        <ChevronDown className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" aria-hidden="true" />
       </button>
 
       {isOpen && (
@@ -76,73 +79,42 @@ export function UserMenu({ className }) {
           role="menu"
           className="absolute right-0 mt-2 w-64 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl py-2 z-50 animate-scale-in"
         >
-          {/* User profile brief */}
-          <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-800">
-            <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
-              {user.name}
-            </p>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-              {user.email}
-            </p>
-            <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-              {isAdmin ? <Shield className="w-2.5 h-2.5 text-amber-500" /> : <User className="w-2.5 h-2.5 text-brand-500" />}
-              <span>{user.role}</span>
+          {/* Who is signed in (real data from the login response) */}
+          <div className="px-4 py-2.5 border-b border-slate-200 dark:border-slate-800">
+            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">{user.name}</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400 truncate">{user.email}</p>
+            <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+              {isAdmin ? (
+                <Shield className="w-3 h-3" aria-hidden="true" />
+              ) : (
+                <User className="w-3 h-3" aria-hidden="true" />
+              )}
+              <span>{formatRole(user.role)}</span>
             </div>
           </div>
 
-          {/* Quick role preview switcher for testing */}
-          {canPreviewRole && <div className="px-2 py-1.5 border-b border-slate-100 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={handleRoleToggle}
-              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium text-brand-600 dark:text-brand-400 hover:bg-brand-50/60 dark:hover:bg-brand-950/40 transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Switch to {isAdmin ? 'Student' : 'Admin'}</span>
-              </div>
-              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-brand-100 dark:bg-brand-900 text-brand-700 dark:text-brand-300">
-                Preview
-              </span>
-            </button>
-          </div>}
-
-          {/* Nav links */}
           <div className="px-2 py-1">
-            <button
-              type="button"
-              onClick={() => {
-                navigate('/my-reports')
-                setIsOpen(false)
-              }}
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left"
-            >
-              <User className="w-3.5 h-3.5 text-slate-400" />
-              <span>My Reported Issues</span>
-            </button>
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={() => {
-                  navigate('/admin')
-                  setIsOpen(false)
-                }}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left"
-              >
-                <Shield className="w-3.5 h-3.5 text-amber-500" />
-                <span>Admin Operations</span>
+            {isAdmin ? (
+              <button type="button" role="menuitem" onClick={() => go('/admin')} className={itemClass}>
+                <Shield className="w-4 h-4 text-slate-600 dark:text-slate-400" aria-hidden="true" />
+                <span>Admin Dashboard</span>
+              </button>
+            ) : (
+              <button type="button" role="menuitem" onClick={() => go('/my-reports')} className={itemClass}>
+                <User className="w-4 h-4 text-slate-600 dark:text-slate-400" aria-hidden="true" />
+                <span>My Reports</span>
               </button>
             )}
           </div>
 
-          {/* Logout */}
-          <div className="px-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+          <div className="px-2 pt-1 border-t border-slate-200 dark:border-slate-800">
             <button
               type="button"
+              role="menuitem"
               onClick={handleLogout}
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors text-left"
+              className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors text-left"
             >
-              <LogOut className="w-3.5 h-3.5" />
+              <LogOut className="w-4 h-4" aria-hidden="true" />
               <span>Sign out</span>
             </button>
           </div>

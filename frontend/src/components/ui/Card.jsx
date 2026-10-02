@@ -44,7 +44,7 @@ export function CardTitle({ children, className, ...props }) {
 
 export function CardDescription({ children, className, ...props }) {
   return (
-    <p className={cn('text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed', className)} {...props}>
+    <p className={cn('text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed', className)} {...props}>
       {children}
     </p>
   )

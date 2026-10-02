@@ -3,14 +3,10 @@ import { Outlet } from 'react-router-dom'
 import { Sidebar } from '../components/navigation/Sidebar'
 import { Topbar } from '../components/navigation/Topbar'
 import { MobileDrawer, MobileBottomBar } from '../components/navigation/MobileNav'
-import { useAuth } from '../hooks/useAuth'
-import { ErrorState } from '../components/ui/ErrorState'
-import { Button } from '../components/ui/Button'
-import { ShieldCheck } from 'lucide-react'
 
+// Same frame as AppLayout. Who may enter is decided by <ProtectedRoute adminOnly> in App.jsx.
 export function AdminLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const { isAdmin, switchRole } = useAuth()
 
   return (
     <div className="min-h-screen flex bg-surface-light-canvas dark:bg-surface-dark-canvas transition-colors duration-200">
@@ -25,27 +21,7 @@ export function AdminLayout() {
         <Topbar onOpenMobileMenu={() => setMobileMenuOpen(true)} />
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto animate-fade-in">
-          {!isAdmin ? (
-            <div className="max-w-md mx-auto py-12">
-              <ErrorState
-                type="forbidden"
-                title="Admin Authentication Required"
-                message="You are currently signed in as a student. To test or review the administrative operations dashboard, switch your session persona."
-                action={
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => switchRole('admin')}
-                    leftIcon={<ShieldCheck className="w-4 h-4" />}
-                  >
-                    Switch to Admin View (Demo)
-                  </Button>
-                }
-              />
-            </div>
-          ) : (
-            <Outlet />
-          )}
+          <Outlet />
         </main>
       </div>
 

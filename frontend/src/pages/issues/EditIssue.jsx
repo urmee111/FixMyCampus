@@ -9,9 +9,11 @@ import { Select } from '../../components/ui/Select'
 import { Button } from '../../components/ui/Button'
 import { ErrorState } from '../../components/ui/ErrorState'
 import { SkeletonDetail } from '../../components/ui/Skeleton'
+import { LocationFields } from '../../components/issues/LocationFields'
 import { getIssue, updateIssue } from '../../api/issues'
 import { validateIssueForm } from '../../lib/validators'
-import { CATEGORIES, CAMPUS_LOCATIONS } from '../../lib/constants'
+import { joinLocation, splitLocation } from '../../lib/formatters'
+import { CATEGORIES, LIMITS } from '../../lib/constants'
 import { useToast } from '../../hooks/useToast'
 import { useAuth } from '../../hooks/useAuth'
 import { Save, ArrowLeft } from 'lucide-react'
@@ -26,39 +28,72 @@ export function EditIssue() {
     title: '',
     description: '',
     category: '',
-    location: '',
+    building: '',
+    spot: '',
   })
+  const [savedBuilding, setSavedBuilding] = useState('') // the building as saved (may be an old one that is not in the list)
   const [errors, setErrors] = useState({})
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isForbidden, setIsForbidden] = useState(false)
+  const [blocked, setBlocked] = useState(null) // { title, message } when this user may not edit this issue
+  const [loadError, setLoadError] = useState(null)
 
   useEffect(() => {
-    async function fetchIssue() {
-      setIsLoading(true)
-      try {
-        const res = await getIssue(id)
-        if (res.data?.issue) {
-          const issue = res.data.issue
-          if (String(issue.reporter?.id) !== String(user?.id)) {
-            setIsForbidden(true)
-            return
-          }
-          const { title, description, category, location } = issue
-          setFormData({ title, description, category, location })
+    let isCurrent = true
+    setIsLoading(true)
+    setLoadError(null)
+    setBlocked(null)
+
+    getIssue(id)
+      .then((res) => {
+        if (!isCurrent) return
+        const issue = res.data
+        // Same rules as the backend: only the reporter, and only while the issue is Open
+        if (issue.createdBy.id !== user?.id) {
+          setBlocked({
+            title: 'Only the reporter can edit this issue',
+            message: 'You can still view the report and follow its progress.',
+          })
+          return
         }
-      } catch {
-        toast.error('Failed to load issue.')
-        navigate('/issues')
-      } finally {
-        setIsLoading(false)
-      }
+        if (issue.status !== 'Open') {
+          setBlocked({
+            title: 'This issue can no longer be edited',
+            message: `Only open issues can be edited. This one is ${issue.status}.`,
+          })
+          return
+        }
+        const { building, spot } = splitLocation(issue.location)
+        setSavedBuilding(building)
+        setFormData({
+          title: issue.title,
+          description: issue.description,
+          category: issue.category,
+          building,
+          spot,
+        })
+      })
+      .catch((err) => {
+        if (isCurrent) setLoadError(err.error?.message || 'Failed to load this issue.')
+      })
+      .finally(() => {
+        if (isCurrent) setIsLoading(false)
+      })
+
+    return () => {
+      isCurrent = false
     }
-    fetchIssue()
-  }, [id, navigate, toast, user?.id])
+  }, [id, user?.id])
+
+  const setField = (name, value) => {
+    setFormData((current) => ({ ...current, [name]: value }))
+    if (errors[name]) setErrors((current) => ({ ...current, [name]: null }))
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (isSubmitting) return
+
     const validation = validateIssueForm(formData)
     if (!validation.isValid) {
       setErrors(validation.errors)
@@ -68,11 +103,23 @@ export function EditIssue() {
     setErrors({})
     setIsSubmitting(true)
     try {
-      await updateIssue(id, formData)
-      toast.success('Issue updated successfully.')
+      await updateIssue(id, {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        category: formData.category,
+        location: joinLocation(formData.building, formData.spot),
+      })
+      toast.success('Issue updated.')
       navigate(`/issues/${id}`)
-    } catch {
-      toast.error('Failed to update issue.')
+    } catch (err) {
+      const fieldErrors = err.error?.fields || {}
+      if (Object.keys(fieldErrors).length) {
+        setErrors(fieldErrors)
+      } else {
+        toast.error(err.error?.message || 'Failed to update the issue.')
+        // 403 / 409: the issue is no longer yours or no longer Open, so there is nothing left to edit here
+        if (err.response?.status === 403 || err.response?.status === 409) navigate(`/issues/${id}`)
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -82,12 +129,23 @@ export function EditIssue() {
     return <SkeletonDetail />
   }
 
-  if (isForbidden) {
+  if (loadError) {
+    return (
+      <ErrorState
+        type="404"
+        title="Could not open this issue"
+        message={loadError}
+        action={<Button size="sm" onClick={() => navigate('/issues')}>Back to Issues</Button>}
+      />
+    )
+  }
+
+  if (blocked) {
     return (
       <ErrorState
         type="forbidden"
-        title="Only the reporter can edit this issue"
-        message="You can still view the report and follow its progress."
+        title={blocked.title}
+        message={blocked.message}
         action={<Button size="sm" onClick={() => navigate(`/issues/${id}`)}>Back to Issue</Button>}
       />
     )
@@ -101,67 +159,73 @@ export function EditIssue() {
           { label: `Issue #${id}`, href: `/issues/${id}` },
           { label: 'Edit' },
         ]}
-        title="Edit Campus Issue"
-        description="Update details or correct location data for this maintenance ticket."
+        title="Edit issue"
+        description="You can edit your report while it is still Open."
       />
 
       <Card>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <FormField id="title" label="Issue Title" required error={errors.title}>
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
+            <FormField id="title" label="Title" required error={errors.title}>
               <Input
                 id="title"
+                maxLength={LIMITS.title.max}
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                disabled={isSubmitting}
+                error={errors.title}
+                onChange={(e) => setField('title', e.target.value)}
               />
             </FormField>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField id="category" label="Category" required error={errors.category}>
-                <Select
-                  id="category"
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                >
-                  <option value="">Select category</option>
-                  {CATEGORIES.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.label}
-                    </option>
-                  ))}
-                </Select>
-              </FormField>
+            <FormField id="category" label="Category" required error={errors.category}>
+              <Select
+                id="category"
+                value={formData.category}
+                disabled={isSubmitting}
+                error={errors.category}
+                onChange={(e) => setField('category', e.target.value)}
+              >
+                <option value="">Select category</option>
+                {CATEGORIES.map((c) => (
+                  <option key={c.id} value={c.label}>
+                    {c.label}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
 
-              <FormField id="location" label="Location" required error={errors.location}>
-                <Input
-                  id="location"
-                  list="location-options"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                />
-                <datalist id="location-options">
-                  {CAMPUS_LOCATIONS.map((loc) => (
-                    <option key={loc} value={loc} />
-                  ))}
-                </datalist>
-              </FormField>
-            </div>
+            <LocationFields
+              building={formData.building}
+              spot={formData.spot}
+              extraBuilding={savedBuilding}
+              onBuildingChange={(value) => {
+                setField('building', value)
+                setErrors((current) => ({ ...current, location: null })) // the dropdown's error is stored as "location"
+              }}
+              onSpotChange={(value) => setField('spot', value)}
+              errors={errors}
+              disabled={isSubmitting}
+            />
 
             <FormField id="description" label="Description" required error={errors.description}>
               <Textarea
                 id="description"
                 rows={5}
+                maxLength={LIMITS.description.max}
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                disabled={isSubmitting}
+                error={errors.description}
+                onChange={(e) => setField('description', e.target.value)}
               />
             </FormField>
 
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
               <Button
                 type="button"
                 variant="outline"
+                disabled={isSubmitting}
                 onClick={() => navigate(`/issues/${id}`)}
-                leftIcon={<ArrowLeft className="w-4 h-4" />}
+                leftIcon={<ArrowLeft className="w-4 h-4" aria-hidden="true" />}
               >
                 Cancel
               </Button>
@@ -169,9 +233,9 @@ export function EditIssue() {
                 type="submit"
                 variant="primary"
                 isLoading={isSubmitting}
-                leftIcon={<Save className="w-4 h-4" />}
+                leftIcon={<Save className="w-4 h-4" aria-hidden="true" />}
               >
-                Save Changes
+                {isSubmitting ? 'Saving…' : 'Save changes'}
               </Button>
             </div>
           </form>

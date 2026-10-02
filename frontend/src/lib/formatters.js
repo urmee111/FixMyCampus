@@ -63,6 +63,28 @@ export function formatFullDate(dateInput) {
 }
 
 /**
+ * The role names shown to people ("admin" is called "Staff / Admin" in the UI)
+ */
+export function formatRole(role) {
+  return role === 'admin' ? 'Staff / Admin' : 'Student'
+}
+
+/**
+ * Location helpers. The backend stores "Building" or "Building, Spot" in one text field.
+ * Building = text before the first comma. Spot = everything after it.
+ */
+export function joinLocation(building, spot = '') {
+  const cleanSpot = spot.trim()
+  return cleanSpot ? `${building}, ${cleanSpot}` : building
+}
+
+export function splitLocation(value = '') {
+  const commaIndex = value.indexOf(',')
+  if (commaIndex === -1) return { building: value.trim(), spot: '' }
+  return { building: value.slice(0, commaIndex).trim(), spot: value.slice(commaIndex + 1).trim() }
+}
+
+/**
  * Formats large numbers compactly
  */
 export function formatCount(count = 0) {

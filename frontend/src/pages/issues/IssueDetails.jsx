@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import React, { useState, useEffect, useCallback } from 'react'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { StatusBadge } from '../../components/ui/StatusBadge'
 import { PriorityBadge } from '../../components/ui/PriorityBadge'
@@ -7,6 +7,9 @@ import { IssueCategoryIcon } from '../../components/issues/IssueCategoryIcon'
 import { IssueUpvoteButton } from '../../components/issues/IssueUpvoteButton'
 import { Avatar } from '../../components/ui/Avatar'
 import { Button } from '../../components/ui/Button'
+import { FormField } from '../../components/ui/FormField'
+import { Select } from '../../components/ui/Select'
+import { Textarea } from '../../components/ui/Textarea'
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { SkeletonDetail } from '../../components/ui/Skeleton'
@@ -16,11 +19,20 @@ import { addComment } from '../../api/comments'
 import { useAuth } from '../../hooks/useAuth'
 import { useToast } from '../../hooks/useToast'
 import { formatRelativeTime, formatFullDate } from '../../lib/formatters'
-import { MapPin, Calendar, MessageSquare, Trash2, Edit3, Send } from 'lucide-react'
+import { LIMITS, STATUSES } from '../../lib/constants'
+import { MapPin, Calendar, MessageSquare, Trash2, Edit3, Send, ShieldCheck } from 'lucide-react'
+
+// Same transitions as the backend: Open -> In Progress / Resolved, In Progress -> Resolved, Resolved -> Open (reopen)
+const NEXT_STATUSES = {
+  [STATUSES.OPEN]: [STATUSES.IN_PROGRESS, STATUSES.RESOLVED],
+  [STATUSES.IN_PROGRESS]: [STATUSES.RESOLVED],
+  [STATUSES.RESOLVED]: [STATUSES.OPEN],
+}
 
 export function IssueDetails() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { hash } = useLocation()
   const { user, isAdmin } = useAuth()
   const toast = useToast()
 
@@ -30,78 +42,115 @@ export function IssueDetails() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  // Comments state
-  const [newCommentText, setNewCommentText] = useState('')
+  // Comments
+  const [commentText, setCommentText] = useState('')
+  const [commentError, setCommentError] = useState(null)
   const [isSubmittingComment, setIsSubmittingComment] = useState(false)
 
-  // Admin status update state
+  // Admin status change
+  const [nextStatus, setNextStatus] = useState('')
+  const [statusNote, setStatusNote] = useState('')
+  const [statusErrors, setStatusErrors] = useState({})
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
 
-  useEffect(() => {
-    async function fetchIssue() {
-      setIsLoading(true)
-      setError(null)
+  // silent = reload after a change without replacing the page with a skeleton
+  const loadIssue = useCallback(
+    async ({ silent = false } = {}) => {
+      if (!silent) {
+        setIsLoading(true)
+        setError(null)
+      }
       try {
         const res = await getIssue(id)
-        if (res.data?.issue) {
-          setIssue(res.data.issue)
-        }
+        setIssue(res.data)
       } catch (err) {
-        setError(err.message || 'Issue not found')
+        if (!silent) setError(err.error?.message || 'Issue not found')
       } finally {
-        setIsLoading(false)
+        if (!silent) setIsLoading(false)
       }
+    },
+    [id]
+  )
+
+  useEffect(() => {
+    loadIssue()
+  }, [loadIssue])
+
+  // Links like /issues/5#comments (the comment icon on a card) scroll to the discussion once the page is there
+  useEffect(() => {
+    if (!isLoading && issue && hash === '#comments') {
+      document.getElementById('comments')?.scrollIntoView({ block: 'start' })
     }
-    fetchIssue()
-  }, [id])
+  }, [isLoading, issue, hash])
+
+  // The status list changes after every status change: select the first allowed one again
+  const allowedStatuses = issue ? NEXT_STATUSES[issue.status] || [] : []
+  const currentStatus = issue?.status
+  useEffect(() => {
+    setNextStatus((NEXT_STATUSES[currentStatus] || [])[0] || '')
+  }, [currentStatus])
 
   const handleDelete = async () => {
     setIsDeleting(true)
     try {
       await deleteIssue(issue.id)
-      toast.success('Campus issue removed successfully.')
+      toast.success('Issue deleted.')
       navigate('/issues')
-    } catch {
-      toast.error('Failed to delete issue.')
+    } catch (err) {
+      toast.error(err.error?.message || 'Failed to delete the issue.')
+      setIsDeleteOpen(false)
     } finally {
       setIsDeleting(false)
-      setIsDeleteOpen(false)
     }
   }
 
   const handleCommentSubmit = async (e) => {
     e.preventDefault()
-    if (!newCommentText.trim()) return
+    if (isSubmittingComment) return
 
+    // An empty comment is sent on purpose: the server's own message ("Comment cannot be empty") is shown under the box
+    setCommentError(null)
     setIsSubmittingComment(true)
     try {
-      const res = await addComment(issue.id, newCommentText.trim(), user)
-      if (res.data?.comment) {
-        setIssue((prev) => ({
-          ...prev,
-          commentsCount: (prev.commentsCount || 0) + 1,
-          comments: [...(prev.comments || []), res.data.comment],
-        }))
-        setNewCommentText('')
-        toast.success('Comment posted.')
+      const res = await addComment(issue.id, commentText)
+      setIssue((current) => ({
+        ...current,
+        commentCount: current.commentCount + 1,
+        comments: [...current.comments, res.data],
+      }))
+      setCommentText('')
+      toast.success('Comment posted.')
+    } catch (err) {
+      const fieldMessage = err.error?.fields?.text
+      if (fieldMessage || err.response?.status === 400) {
+        setCommentError(fieldMessage || err.error.message)
+      } else {
+        toast.error(err.error?.message || 'Could not post your comment.')
       }
-    } catch {
-      toast.error('Could not post comment.')
     } finally {
       setIsSubmittingComment(false)
     }
   }
 
-  const handleAdminStatusChange = async (nextStatus) => {
+  const handleStatusSubmit = async (e) => {
+    e.preventDefault()
+    if (isUpdatingStatus || !nextStatus) return
+
+    setStatusErrors({})
     setIsUpdatingStatus(true)
     try {
-      const res = await updateStatus(issue.id, nextStatus)
-      if (res.data?.issue) {
-        setIssue(res.data.issue)
-        toast.success(`Status updated to ${nextStatus}.`)
+      await updateStatus(issue.id, nextStatus, statusNote)
+      toast.success(`Status changed to ${nextStatus}.`)
+      setStatusNote('')
+      await loadIssue({ silent: true }) // the timeline and the official comment come from the full issue
+    } catch (err) {
+      const fields = err.error?.fields || {}
+      if (Object.keys(fields).length) {
+        setStatusErrors(fields)
+      } else {
+        toast.error(err.error?.message || 'Failed to update the status.')
       }
-    } catch {
-      toast.error('Failed to update status.')
+      if (err.response?.status === 409) await loadIssue({ silent: true }) // someone else changed it first
     } finally {
       setIsUpdatingStatus(false)
     }
@@ -115,8 +164,9 @@ export function IssueDetails() {
     return (
       <ErrorState
         type="404"
-        title="Campus Issue Not Found"
+        title="Issue not found"
         message={error || 'This issue may have been removed or does not exist.'}
+        onRetry={() => loadIssue()}
         action={
           <Button variant="primary" size="sm" onClick={() => navigate('/issues')}>
             Back to Issues
@@ -126,13 +176,9 @@ export function IssueDetails() {
     )
   }
 
-  const isOwner = user && issue.reporter?.id === user.id
+  const isOwner = Boolean(user) && issue.createdBy.id === user.id
+  const canEdit = isOwner && issue.status === STATUSES.OPEN // the backend only lets the owner edit an Open issue
   const canDelete = isOwner || isAdmin
-  const nextStatuses = issue.status === 'Open'
-    ? ['In Progress', 'Resolved']
-    : issue.status === 'In Progress'
-      ? ['Resolved']
-      : ['Open']
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -142,14 +188,14 @@ export function IssueDetails() {
           { label: `Issue #${issue.id}` },
         ]}
         actions={
-          (isOwner || canDelete) && (
+          (canEdit || canDelete) && (
             <div className="flex items-center gap-2">
-              {isOwner && (
+              {canEdit && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => navigate(`/issues/${issue.id}/edit`)}
-                  leftIcon={<Edit3 className="w-3.5 h-3.5" />}
+                  leftIcon={<Edit3 className="w-3.5 h-3.5" aria-hidden="true" />}
                 >
                   Edit
                 </Button>
@@ -159,7 +205,7 @@ export function IssueDetails() {
                   variant="danger"
                   size="sm"
                   onClick={() => setIsDeleteOpen(true)}
-                  leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+                  leftIcon={<Trash2 className="w-3.5 h-3.5" aria-hidden="true" />}
                 >
                   Delete
                 </Button>
@@ -169,221 +215,244 @@ export function IssueDetails() {
         }
       />
 
-      {/* Main Issue Card */}
-      <Card className="shadow-xs">
+      <Card>
         <CardContent className="space-y-6">
-          {/* Metadata badges row */}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <IssueCategoryIcon category={issue.category} size="md" showLabel />
               <StatusBadge status={issue.status} size="md" />
-              <PriorityBadge upvotes={issue.upvotes} size="md" />
+              <PriorityBadge upvotes={issue.upvoteCount} size="md" />
             </div>
 
-            <div className="flex items-center gap-2">
-              <IssueUpvoteButton
-                issueId={issue.id}
-                initialUpvotes={issue.upvotes}
-                initialHasUpvoted={issue.hasUpvoted}
-                onUpvoteChange={(upvotes, hasUpvoted) => setIssue((current) => ({ ...current, upvotes, hasUpvoted }))}
-                size="md"
-              />
-            </div>
+            <IssueUpvoteButton
+              issue={issue}
+              onUpvoteChange={(upvoteCount, hasUpvoted) =>
+                setIssue((current) => ({ ...current, upvoteCount, hasUpvoted }))
+              }
+              size="md"
+            />
           </div>
 
-          {/* Title & Location */}
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 break-words">
               {issue.title}
             </h1>
-            <div className="flex flex-wrap items-center gap-4 mt-2.5 text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2.5 text-sm text-slate-700 dark:text-slate-300">
               <div className="flex items-center gap-1.5 font-medium">
-                <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <MapPin className="w-4 h-4 shrink-0" aria-hidden="true" />
                 <span>{issue.location}</span>
               </div>
-              <span>•</span>
-              <div className="flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <div className="flex items-center gap-1.5" title={formatFullDate(issue.createdAt)}>
+                <Calendar className="w-4 h-4 shrink-0" aria-hidden="true" />
                 <span>Reported {formatRelativeTime(issue.createdAt)}</span>
               </div>
             </div>
           </div>
 
-          {/* Description */}
-          <div className="prose dark:prose-invert max-w-none text-sm text-slate-700 dark:text-slate-300 leading-relaxed border-t border-b border-slate-100 dark:border-slate-800/80 py-4">
-            <p className="whitespace-pre-line">{issue.description}</p>
+          <div className="text-sm sm:text-base text-slate-800 dark:text-slate-200 leading-relaxed border-t border-b border-slate-200 dark:border-slate-800 py-4">
+            <p className="whitespace-pre-line break-words">{issue.description}</p>
           </div>
 
-          {/* Photo Preview if attached */}
-          {issue.imageUrl && (
-            <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
+          {issue.photoUrl && (
+            <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
               <img
-                src={issue.imageUrl}
-                alt={issue.title}
+                src={issue.photoUrl}
+                alt={`Photo attached to the issue “${issue.title}”`}
                 className="w-full max-h-96 object-cover"
               />
             </div>
           )}
 
-          {/* Reporter Profile */}
-          <div className="flex items-center gap-3 pt-2 text-xs text-slate-500 dark:text-slate-400">
-            <Avatar src={issue.reporter?.avatar} name={issue.reporter?.name} size="sm" />
+          <div className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-300">
+            <Avatar name={issue.createdBy.name} size="sm" />
             <div>
-              <p className="font-semibold text-slate-800 dark:text-slate-200">
-                {issue.reporter?.name || 'Anonymous Student'}
-              </p>
-              <p className="text-[11px] text-slate-400">Campus Reporter</p>
+              <p className="font-semibold text-slate-900 dark:text-slate-100">{issue.createdBy.name}</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">Reporter</p>
             </div>
           </div>
 
-          {/* Admin Fast Status Triage Controller */}
+          {/* Status control (Staff / Admin only; the backend checks the role as well) */}
           {isAdmin && (
-            <div className="p-4 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-bold text-amber-900 dark:text-amber-200">
-                  Admin Operational Status Triage
-                </p>
-                <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                  Update the status to notify the student body of maintenance progress.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {nextStatuses.map((nextStatus) => (
-                  <Button
-                    key={nextStatus}
-                    size="sm"
-                    variant="outline"
+            <form
+              onSubmit={handleStatusSubmit}
+              noValidate
+              className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-3"
+            >
+              <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-brand-600 dark:text-brand-400" aria-hidden="true" />
+                Change status
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-3">
+                <FormField id="next-status" label="New status" error={statusErrors.status}>
+                  <Select
+                    id="next-status"
+                    value={nextStatus}
                     disabled={isUpdatingStatus}
-                    onClick={() => handleAdminStatusChange(nextStatus)}
+                    error={statusErrors.status}
+                    onChange={(e) => setNextStatus(e.target.value)}
                   >
-                    {isUpdatingStatus ? 'Updating...' : nextStatus === 'Open' ? 'Reopen' : nextStatus}
-                  </Button>
-                ))}
+                    {allowedStatuses.map((name) => (
+                      <option key={name} value={name}>
+                        {name === STATUSES.OPEN ? 'Open (reopen)' : name}
+                      </option>
+                    ))}
+                  </Select>
+                </FormField>
+                <FormField
+                  id="status-note"
+                  label="Note (optional)"
+                  error={statusErrors.note}
+                  helperText={`Students see it in the timeline and as an official comment. ${statusNote.length}/${LIMITS.note.max}`}
+                >
+                  <Textarea
+                    id="status-note"
+                    rows={2}
+                    maxLength={LIMITS.note.max}
+                    placeholder="e.g. Electrician assigned for tomorrow"
+                    value={statusNote}
+                    disabled={isUpdatingStatus}
+                    error={statusErrors.note}
+                    onChange={(e) => setStatusNote(e.target.value)}
+                  />
+                </FormField>
               </div>
-            </div>
+              <div className="flex justify-end">
+                <Button type="submit" size="sm" isLoading={isUpdatingStatus} disabled={!nextStatus}>
+                  {isUpdatingStatus ? 'Updating…' : 'Update status'}
+                </Button>
+              </div>
+            </form>
           )}
         </CardContent>
       </Card>
 
-      {/* Status Timeline */}
+      {/* Status timeline (from status_history) */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Resolution Timeline
-          </CardTitle>
+          <CardTitle className="text-base font-bold">Status timeline</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4 relative before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800">
-            {issue.timeline?.map((step, idx) => (
-              <div key={step.id || idx} className="relative flex items-start gap-4 pl-8">
-                <div className="absolute left-1.5 top-1 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-brand-600 ring-4 ring-white dark:ring-slate-900" />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">
-                      {step.status}
-                    </span>
-                    <span className="text-[11px] text-slate-400">
-                      {formatFullDate(step.timestamp)}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                    {step.note}
-                  </p>
+          <ol className="space-y-5 relative before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-700">
+            {issue.history.map((step) => (
+              <li key={step.id} className="relative pl-8">
+                <span
+                  className="absolute left-0 top-1 w-4 h-4 rounded-full bg-brand-600 ring-4 ring-white dark:ring-slate-900"
+                  aria-hidden="true"
+                />
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {step.oldStatus ? `${step.oldStatus} → ${step.newStatus}` : `Reported (${step.newStatus})`}
+                  </span>
+                  <span className="text-xs text-slate-600 dark:text-slate-400" title={formatFullDate(step.changedAt)}>
+                    {formatRelativeTime(step.changedAt)} · {step.changedBy.name}
+                  </span>
                 </div>
-              </div>
+                {step.note && (
+                  <p className="text-sm text-slate-700 dark:text-slate-300 mt-1 break-words">{step.note}</p>
+                )}
+              </li>
             ))}
-          </div>
+          </ol>
         </CardContent>
       </Card>
 
-      {/* Comments Section */}
-      <Card id="comments">
-        <CardHeader className="flex flex-row items-center justify-between">
+      {/* Comments */}
+      <Card id="comments" className="scroll-mt-20">
+        <CardHeader>
           <CardTitle className="text-base font-bold flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-slate-400" />
-            <span>Updates & Discussion ({issue.commentsCount || 0})</span>
+            <MessageSquare className="w-4 h-4" aria-hidden="true" />
+            <span>Comments ({issue.commentCount})</span>
           </CardTitle>
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Comment composer */}
-          <form onSubmit={handleCommentSubmit} className="flex gap-3">
-            <Avatar src={user?.avatar} name={user?.name || 'Me'} size="sm" />
-            <div className="flex-1 flex gap-2">
-              <label className="sr-only" htmlFor="newComment">Add a useful update</label>
-              <input
-                id="newComment"
-                type="text"
-                value={newCommentText}
-                onChange={(e) => setNewCommentText(e.target.value)}
-                placeholder="Write a comment or campus update..."
-                maxLength={500}
-                className="flex-1 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3.5 py-2 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-              />
-              <Button
-                type="submit"
-                size="sm"
-                variant="primary"
-                isLoading={isSubmittingComment}
-                disabled={!newCommentText.trim()}
-                leftIcon={<Send className="w-3.5 h-3.5" />}
+          <form onSubmit={handleCommentSubmit} noValidate className="flex gap-3">
+            <Avatar name={user?.name || 'Me'} size="sm" className="hidden sm:inline-flex mt-1" />
+            <div className="flex-1 space-y-2">
+              <FormField
+                id="new-comment"
+                label="Add a comment"
+                error={commentError}
+                helperText={`${commentText.length}/${LIMITS.comment.max}`}
               >
-                Post
-              </Button>
+                <Textarea
+                  id="new-comment"
+                  rows={2}
+                  maxLength={LIMITS.comment.max}
+                  placeholder="Write a comment or an update…"
+                  value={commentText}
+                  disabled={isSubmittingComment}
+                  error={commentError}
+                  onChange={(e) => {
+                    setCommentText(e.target.value)
+                    if (commentError) setCommentError(null)
+                  }}
+                />
+              </FormField>
+              <div className="flex justify-end">
+                <Button
+                  type="submit"
+                  size="sm"
+                  variant="primary"
+                  isLoading={isSubmittingComment}
+                  leftIcon={<Send className="w-3.5 h-3.5" aria-hidden="true" />}
+                >
+                  {isSubmittingComment ? 'Posting…' : 'Post comment'}
+                </Button>
+              </div>
             </div>
           </form>
 
-          {/* Comments list */}
-          {issue.comments?.length > 0 ? (
-            <div className="space-y-3 pt-2">
+          {issue.comments.length > 0 ? (
+            <ul className="space-y-3 pt-2">
               {issue.comments.map((comment) => (
-                <div
+                <li
                   key={comment.id}
-                  className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800"
+                  className={
+                    comment.user.role === 'admin'
+                      ? 'flex items-start gap-3 p-3 rounded-xl bg-brand-50 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-800'
+                      : 'flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700'
+                  }
                 >
-                  <Avatar
-                    src={comment.author?.avatar}
-                    name={comment.author?.name}
-                    size="xs"
-                  />
+                  <Avatar name={comment.user.name} size="xs" className="mt-0.5" />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                        {comment.author?.name}
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        {comment.user.name}
                       </span>
-                      {comment.author?.role === 'admin' && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-300">
-                          Staff
+                      {comment.user.role === 'admin' && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold px-1.5 py-0.5 rounded bg-brand-600 text-white">
+                          <ShieldCheck className="w-3 h-3" aria-hidden="true" />
+                          Official
                         </span>
                       )}
-                      <span className="text-[11px] text-slate-400">
+                      <span className="text-xs text-slate-600 dark:text-slate-400" title={formatFullDate(comment.createdAt)}>
                         {formatRelativeTime(comment.createdAt)}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
+                    <p className="text-sm text-slate-800 dark:text-slate-200 mt-1 whitespace-pre-line break-words">
                       {comment.text}
                     </p>
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           ) : (
-            <p className="text-xs text-slate-400 text-center py-4">
-              No comments yet. Be the first to share an update about this issue.
+            <p className="text-sm text-slate-700 dark:text-slate-300 text-center py-4">
+              No comments yet. Be the first to add one.
             </p>
           )}
         </CardContent>
       </Card>
 
-      {/* Delete confirmation dialog */}
       <ConfirmDialog
         isOpen={isDeleteOpen}
         onClose={() => setIsDeleteOpen(false)}
         onConfirm={handleDelete}
         isLoading={isDeleting}
-        title="Delete this campus issue?"
-        description="This action cannot be undone. All comments and upvotes associated with this issue will also be removed."
-        confirmText="Delete Issue"
+        title="Delete this issue?"
+        description="This cannot be undone. Its comments, upvotes and status history will be deleted too."
+        confirmText="Delete issue"
         isDestructive
       />
     </div>

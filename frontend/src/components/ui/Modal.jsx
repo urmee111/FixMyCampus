@@ -76,7 +76,7 @@ export function Modal({
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-xs transition-opacity"
+        className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -103,7 +103,7 @@ export function Modal({
               </h3>
             )}
             {description && (
-              <p id={descriptionId} className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+              <p id={descriptionId} className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
                 {description}
               </p>
             )}
@@ -112,7 +112,7 @@ export function Modal({
             type="button"
             onClick={onClose}
             aria-label="Close dialog"
-            className="p-1.5 -mr-1.5 -mt-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="p-1.5 -mr-1.5 -mt-1.5 text-slate-600 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>

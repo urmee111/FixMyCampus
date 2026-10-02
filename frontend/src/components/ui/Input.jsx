@@ -16,7 +16,7 @@ export const Input = forwardRef(function Input(
   return (
     <div className="relative flex items-center w-full">
       {leftIcon && (
-        <div className="absolute left-3.5 text-slate-400 dark:text-slate-500 pointer-events-none flex items-center justify-center">
+        <div className="absolute left-3.5 text-slate-600 dark:text-slate-500 pointer-events-none flex items-center justify-center">
           {leftIcon}
         </div>
       )}
@@ -26,22 +26,22 @@ export const Input = forwardRef(function Input(
         disabled={disabled}
         aria-invalid={Boolean(error)}
         className={cn(
-          'w-full bg-white dark:bg-slate-900/90 text-slate-900 dark:text-slate-100 text-sm rounded-xl border transition-all duration-150',
-          'placeholder:text-slate-400 dark:placeholder:text-slate-500',
-          'focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500',
+          'w-full bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm rounded-xl border transition-all duration-150',
+          'placeholder:text-slate-500 dark:placeholder:text-slate-500',
+          'focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500',
           leftIcon ? 'pl-10' : 'pl-3.5',
           rightIcon ? 'pr-10' : 'pr-3.5',
           'py-2.5',
           error
-            ? 'border-rose-300 dark:border-rose-700/80 focus:ring-rose-500/20 focus:border-rose-500'
-            : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700',
-          disabled && 'bg-slate-50 dark:bg-slate-900/40 text-slate-400 cursor-not-allowed border-slate-200 dark:border-slate-800',
+            ? 'border-red-400 dark:border-red-700/80 focus:ring-red-500/30 focus:border-red-500'
+            : 'border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600',
+          disabled && 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 cursor-not-allowed',
           className
         )}
         {...props}
       />
       {rightIcon && (
-        <div className="absolute right-3.5 text-slate-400 dark:text-slate-500 flex items-center justify-center">
+        <div className="absolute right-3.5 text-slate-600 dark:text-slate-500 flex items-center justify-center">
           {rightIcon}
         </div>
       )}

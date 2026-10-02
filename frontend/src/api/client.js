@@ -4,10 +4,10 @@
  * and normalizes responses to match the project's { success: true, data } / { success: false, error } contract.
  */
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+// VITE_API_BASE_URL is the only setting. Without it we use the local backend, but only while developing.
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '')).replace(/\/+$/, '')
 const TOKEN_KEY = 'fixmycampus_token'
 const USER_KEY = 'fixmycampus_user'
-export const USE_MOCK_API = import.meta.env.VITE_USE_MOCK !== 'false'
 
 export const getAuthToken = () => {
   try {
@@ -52,9 +52,18 @@ export const clearAuthSession = () => {
   window.dispatchEvent(new Event('fixmycampus:unauthorized'))
 }
 
+// Builds the error object every page understands: err.error = { code, message, fields }, err.response.status
+function makeApiError(errorObj, status) {
+  const err = new Error(errorObj.message)
+  err.error = errorObj
+  if (status) err.response = { status, data: { success: false, error: errorObj } }
+  return err
+}
+
 /**
  * Standardized request wrapper.
- * Returns { success: true, data } on success, or throws normalized { success: false, error: { code, message, fields } }
+ * Returns { success: true, data } on success, or throws an Error with err.error = { code, message, fields }
+ * (the backend's { success: false, error } object, or a NETWORK_ERROR / BAD_RESPONSE one made here).
  */
 export async function apiRequest(endpoint, options = {}) {
   const token = getAuthToken()
@@ -64,51 +73,46 @@ export async function apiRequest(endpoint, options = {}) {
     ...options.headers,
   }
 
-  // Handle FormData where Content-Type is auto-managed
+  // Handle FormData where Content-Type is auto-managed (the browser adds the multipart boundary)
   if (options.body instanceof FormData) {
     delete headers['Content-Type']
   }
 
-  const url = `${BASE_URL}${endpoint}`
-
+  let response
+  let payload
   try {
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    })
-
-    const payload = await response.json().catch(() => null)
-
-    if (!response.ok) {
-      const isAuthRequest = options.url?.startsWith('/auth/') || endpoint.startsWith('/auth/')
-      if (response.status === 401 && !isAuthRequest) clearAuthSession()
-      const errorObj = payload?.error || {
-        code: `HTTP_${response.status}`,
-        message: payload?.message || response.statusText || 'An unexpected error occurred',
-        fields: payload?.fields || {},
-      }
-      const err = new Error(errorObj.message)
-      err.response = {
-        status: response.status,
-        data: { success: false, error: errorObj },
-      }
-      err.error = errorObj
-      throw err
-    }
-
-    return payload || { success: true, data: null }
-  } catch (error) {
-    if (error.error) {
-      throw error
-    }
-    // Network or parse error
-    const normalizedError = {
+    response = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers })
+    payload = await response.json().catch(() => null)
+  } catch {
+    throw makeApiError({
       code: 'NETWORK_ERROR',
       message: "We couldn't reach the campus server. Check your connection and try again.",
       fields: {},
-    }
-    const err = new Error(normalizedError.message)
-    err.error = normalizedError
-    throw err
+    })
   }
+
+  if (!response.ok) {
+    // A 401 on the login/signup form just means "wrong password". Anywhere else it means the session ended.
+    const isAuthRequest = endpoint.startsWith('/auth/')
+    if (response.status === 401 && !isAuthRequest) clearAuthSession()
+    throw makeApiError(
+      payload?.error || {
+        code: `HTTP_${response.status}`,
+        message: response.statusText || 'An unexpected error occurred',
+        fields: {},
+      },
+      response.status,
+    )
+  }
+
+  // A 200 that is not our { success, data } JSON (for example an HTML page from a wrong API address) is an error too
+  if (!payload || payload.success !== true) {
+    throw makeApiError({
+      code: 'BAD_RESPONSE',
+      message: 'The server sent an unexpected answer. Please try again in a moment.',
+      fields: {},
+    }, response.status)
+  }
+
+  return payload
 }

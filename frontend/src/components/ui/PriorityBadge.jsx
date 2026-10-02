@@ -2,8 +2,16 @@ import React from 'react'
 import { getPriorityFromUpvotes } from '../../lib/formatters'
 import { PRIORITIES, PRIORITY_CONFIG } from '../../lib/constants'
 import { cn } from '../../lib/utils'
-import { Flame, AlertCircle, ArrowDown } from 'lucide-react'
+import { Flame, AlertTriangle, ArrowDown } from 'lucide-react'
 
+const PRIORITY_ICONS = {
+  [PRIORITIES.HIGH]: Flame,
+  [PRIORITIES.MEDIUM]: AlertTriangle,
+  [PRIORITIES.LOW]: ArrowDown,
+}
+
+// High (10+ upvotes) = red, Medium (5-9) = orange, Low = slate.
+// `priority` is the word the API sends; without it the badge works it out from the upvote count with the same rule.
 export function PriorityBadge({
   upvotes,
   priority: explicitPriority,
@@ -13,35 +21,25 @@ export function PriorityBadge({
 }) {
   const derivedPriority = explicitPriority || getPriorityFromUpvotes(upvotes ?? 0)
   const config = PRIORITY_CONFIG[derivedPriority] || PRIORITY_CONFIG[PRIORITIES.LOW]
+  const Icon = PRIORITY_ICONS[derivedPriority] || ArrowDown
 
   const sizeClasses = {
-    sm: 'text-[10px] px-2 py-0.5 gap-1 font-semibold uppercase tracking-wider',
-    md: 'text-[11px] px-2.5 py-0.5 gap-1.5 font-semibold uppercase tracking-wider',
-    lg: 'text-xs px-3 py-1 gap-1.5 font-bold uppercase tracking-wider',
-  }
-
-  const renderIcon = () => {
-    if (!showIcon) return null
-    if (derivedPriority === PRIORITIES.HIGH) {
-      return <Flame className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0" />
-    }
-    if (derivedPriority === PRIORITIES.MEDIUM) {
-      return <AlertCircle className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
-    }
-    return <ArrowDown className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+    sm: 'text-[11px] px-2 py-0.5 gap-1 font-semibold',
+    md: 'text-xs px-2.5 py-1 gap-1.5 font-semibold',
+    lg: 'text-sm px-3 py-1 gap-1.5 font-bold',
   }
 
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full border select-none transition-colors duration-150',
+        'inline-flex items-center rounded-full border select-none whitespace-nowrap',
         config.badgeClass,
         sizeClasses[size] || sizeClasses.md,
         className
       )}
-      title={`${config.label} (based on ${upvotes ?? 0} upvotes)`}
+      title={`${config.label} (${upvotes ?? 0} upvotes)`}
     >
-      {renderIcon()}
+      {showIcon && <Icon className="w-3 h-3 shrink-0" aria-hidden="true" />}
       <span>{config.label}</span>
     </span>
   )

@@ -14,7 +14,7 @@ export function ErrorState({
   const configs = {
     generic: {
       icon: AlertCircle,
-      iconClass: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900',
+      iconClass: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900',
       title: title || 'Something went wrong',
       message: message || "We couldn't load this information right now. Please try again.",
     },
@@ -53,7 +53,7 @@ export function ErrorState({
       <h3 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">
         {current.title}
       </h3>
-      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 max-w-sm leading-relaxed">
+      <p className="text-xs text-slate-600 dark:text-slate-400 mt-1.5 max-w-sm leading-relaxed">
         {current.message}
       </p>
 

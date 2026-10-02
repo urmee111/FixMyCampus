@@ -21,6 +21,11 @@ export default {
           900: 'oklch(var(--brand-900) / <alpha-value>)',
           950: 'oklch(var(--brand-950) / <alpha-value>)',
         },
+        // Accent (teal). Use it for icons and highlights, not for small text on white (3.7:1).
+        accent: {
+          DEFAULT: 'oklch(var(--accent) / <alpha-value>)',
+          foreground: 'oklch(var(--accent-foreground) / <alpha-value>)',
+        },
         surface: {
           light: {
             canvas: 'oklch(var(--background) / <alpha-value>)',
@@ -28,7 +33,7 @@ export default {
             card: 'oklch(var(--card) / <alpha-value>)',
             elevated: 'oklch(var(--popover) / <alpha-value>)',
             border: 'oklch(var(--border) / <alpha-value>)',
-            borderHover: 'oklch(0.8200 0.0200 74.6428 / <alpha-value>)',
+            borderHover: 'oklch(var(--border-strong) / <alpha-value>)',
           },
           dark: {
             canvas: 'oklch(var(--background) / <alpha-value>)',
@@ -36,7 +41,7 @@ export default {
             card: 'oklch(var(--card) / <alpha-value>)',
             elevated: 'oklch(var(--popover) / <alpha-value>)',
             border: 'oklch(var(--border) / <alpha-value>)',
-            borderHover: 'oklch(0.5000 0.0300 145.0000 / <alpha-value>)',
+            borderHover: 'oklch(var(--border-strong) / <alpha-value>)',
           }
         },
         slate: {

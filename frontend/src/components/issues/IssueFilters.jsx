@@ -1,294 +1,269 @@
 import React, { useState } from 'react'
-import { CATEGORIES, CAMPUS_LOCATIONS } from '../../lib/constants'
+import { CATEGORIES, CAMPUS_LOCATIONS, STATUSES } from '../../lib/constants'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { SlidersHorizontal, X, RotateCcw, Check } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
+// Category and status values are the exact words the backend expects ("Electrical", "In Progress").
+// "" means "all" (the filter is then not sent at all).
+const STATUS_LIST = Object.values(STATUSES)
+
+const selectClass =
+  'text-sm font-medium px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 cursor-pointer'
+
+const pillClass = (selected) =>
+  cn(
+    'px-3 py-1.5 rounded-xl text-sm font-semibold shrink-0 transition-colors select-none',
+    selected
+      ? 'bg-brand-600 text-white'
+      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+  )
+
+const optionButtonClass = (selected) =>
+  cn(
+    'p-2.5 rounded-xl text-sm font-semibold text-left border transition-colors flex items-center justify-between',
+    selected
+      ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/60 text-brand-800 dark:text-brand-300'
+      : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200'
+  )
+
 export function IssueFilters({
-  category = 'all',
-  status = 'all',
-  location = 'all',
-  sortBy = 'newest',
+  category = '',
+  status = '',
+  location = '',
+  sort = 'newest',
+  query = '',
   onCategoryChange,
   onStatusChange,
   onLocationChange,
   onSortChange,
+  onClearSearch,
   onResetFilters,
   className,
 }) {
   const [mobileModalOpen, setMobileModalOpen] = useState(false)
 
-  // Count active non-default filters
-  const activeCount = [
-    category !== 'all',
-    status !== 'all',
-    location !== 'all',
-  ].filter(Boolean).length
+  // A location from the URL that is not in the list (old link) is still shown, so the dropdown never lies
+  const locationOptions =
+    location && !CAMPUS_LOCATIONS.includes(location) ? [location, ...CAMPUS_LOCATIONS] : CAMPUS_LOCATIONS
+
+  const activeCount = [category, status, location, query].filter(Boolean).length
 
   return (
     <div className={cn('space-y-3', className)}>
-      {/* Desktop & Tablet Filter Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {/* Category Pills (Desktop) */}
-        <div className="hidden lg:flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        {/* Category pills (desktop) */}
+        <div className="hidden lg:flex items-center gap-1.5 overflow-x-auto pb-1" role="group" aria-label="Filter by category">
           <button
             type="button"
-            onClick={() => onCategoryChange('all')}
-            className={cn(
-              'px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all select-none',
-              category === 'all'
-                ? 'bg-brand-600 text-white shadow-xs'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-            )}
+            onClick={() => onCategoryChange('')}
+            aria-pressed={category === ''}
+            className={pillClass(category === '')}
           >
             All Categories
           </button>
-          {CATEGORIES.map((cat) => {
-            const isSelected = category.toLowerCase() === cat.id
-            return (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => onCategoryChange(cat.id)}
-                className={cn(
-                  'px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all select-none',
-                  isSelected
-                    ? 'bg-brand-600 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-                )}
-              >
-                {cat.label}
-              </button>
-            )
-          })}
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => onCategoryChange(cat.label)}
+              aria-pressed={category === cat.label}
+              className={pillClass(category === cat.label)}
+            >
+              {cat.label}
+            </button>
+          ))}
         </div>
 
-        {/* Dropdown Filters (Desktop & Mobile toggle) */}
         <div className="flex items-center gap-2 w-full lg:w-auto justify-between lg:justify-end">
-          {/* Mobile Filter Sheet Trigger */}
+          {/* Mobile filter sheet trigger */}
           <div className="lg:hidden flex items-center gap-2">
             <Button
               variant={activeCount > 0 ? 'primary' : 'outline'}
               size="sm"
               onClick={() => setMobileModalOpen(true)}
-              leftIcon={<SlidersHorizontal className="w-3.5 h-3.5" />}
+              leftIcon={<SlidersHorizontal className="w-3.5 h-3.5" aria-hidden="true" />}
             >
-              <span>Filters</span>
-              {activeCount > 0 && (
-                <span className="w-4 h-4 rounded-full bg-white text-brand-600 dark:bg-slate-900 text-[10px] font-bold flex items-center justify-center">
-                  {activeCount}
-                </span>
-              )}
+              Filters{activeCount > 0 ? ` (${activeCount})` : ''}
             </Button>
           </div>
 
-          {/* Desktop Select Dropdowns */}
+          {/* Desktop selects */}
           <div className="hidden lg:flex items-center gap-2">
-            {/* Status Select */}
             <select
               value={status}
-              aria-label="Filter by Status"
+              aria-label="Filter by status"
               onChange={(e) => onStatusChange(e.target.value)}
-              className="text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer"
+              className={selectClass}
             >
-              <option value="all">All Statuses</option>
-              <option value="open">Open</option>
-              <option value="in progress">In Progress</option>
-              <option value="resolved">Resolved</option>
+              <option value="">All statuses</option>
+              {STATUS_LIST.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
             </select>
 
-            {/* Location Select */}
             <select
               value={location}
-              aria-label="Filter by Location"
+              aria-label="Filter by location"
               onChange={(e) => onLocationChange(e.target.value)}
-              className="text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer max-w-[180px] truncate"
+              className={cn(selectClass, 'max-w-[180px]')}
             >
-              <option value="all">All Locations</option>
-              {CAMPUS_LOCATIONS.map((loc) => (
-                <option key={loc} value={loc}>
-                  {loc}
+              <option value="">All locations</option>
+              {locationOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Sort Selector (visible on all breakpoints) */}
+          {/* Sort (all screen sizes) */}
           <div className="flex items-center gap-1.5 ml-auto">
-            <span className="text-[11px] font-medium text-slate-400 hidden sm:inline">Sort:</span>
+            <label htmlFor="issue-sort" className="text-sm font-medium text-slate-700 dark:text-slate-300 hidden sm:inline">
+              Sort:
+            </label>
             <select
-              value={sortBy}
-              aria-label="Sort issues"
+              id="issue-sort"
+              value={sort}
               onChange={(e) => onSortChange(e.target.value)}
-              className="text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer"
+              className={selectClass}
             >
-              <option value="newest">Newest First</option>
-              <option value="upvotes">Highest Upvotes</option>
-              <option value="oldest">Oldest First</option>
+              <option value="newest">Newest first</option>
+              <option value="upvotes">Most upvoted</option>
+              <option value="oldest">Oldest first</option>
             </select>
           </div>
         </div>
       </div>
 
-      {/* Active Filter Chips Bar */}
+      {/* Active filter chips */}
       {activeCount > 0 && (
-        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 animate-fade-in">
-          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+        <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
             Active filters:
           </span>
 
-          {category !== 'all' && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
-              <span>Category: <strong className="capitalize">{category}</strong></span>
-              <button
-                type="button"
-                onClick={() => onCategoryChange('all')}
-                aria-label="Remove category filter"
-                className="hover:text-brand-900 dark:hover:text-white p-0.5 rounded-full"
+          {[
+            { key: 'q', label: 'Search', value: query, clear: onClearSearch },
+            { key: 'category', label: 'Category', value: category, clear: () => onCategoryChange('') },
+            { key: 'status', label: 'Status', value: status, clear: () => onStatusChange('') },
+            { key: 'location', label: 'Location', value: location, clear: () => onLocationChange('') },
+          ]
+            .filter((chip) => chip.value)
+            .map((chip) => (
+              <span
+                key={chip.key}
+                className="inline-flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-full text-xs font-medium bg-brand-50 text-brand-800 dark:bg-brand-950/60 dark:text-brand-300 border border-brand-200 dark:border-brand-800 max-w-[220px]"
               >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
-
-          {status !== 'all' && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
-              <span>Status: <strong className="capitalize">{status}</strong></span>
-              <button
-                type="button"
-                onClick={() => onStatusChange('all')}
-                aria-label="Remove status filter"
-                className="hover:text-brand-900 dark:hover:text-white p-0.5 rounded-full"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
-
-          {location !== 'all' && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300 border border-brand-200 dark:border-brand-800 max-w-[200px] truncate">
-              <span className="truncate">Location: <strong>{location}</strong></span>
-              <button
-                type="button"
-                onClick={() => onLocationChange('all')}
-                aria-label="Remove location filter"
-                className="hover:text-brand-900 dark:hover:text-white p-0.5 rounded-full shrink-0"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </span>
-          )}
+                <span className="truncate">
+                  {chip.label}: <strong>{chip.value}</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={chip.clear}
+                  aria-label={`Remove ${chip.label.toLowerCase()} filter`}
+                  className="p-1 rounded-full hover:bg-brand-100 dark:hover:bg-brand-900 shrink-0"
+                >
+                  <X className="w-3 h-3" aria-hidden="true" />
+                </button>
+              </span>
+            ))}
 
           <button
             type="button"
             onClick={onResetFilters}
-            className="text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 underline ml-2 transition-colors flex items-center gap-1"
+            className="text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white underline ml-1 transition-colors flex items-center gap-1"
           >
-            <RotateCcw className="w-3 h-3" />
-            <span>Clear all</span>
+            <RotateCcw className="w-3 h-3" aria-hidden="true" />
+            <span>Clear filters</span>
           </button>
         </div>
       )}
 
-      {/* Mobile Filters Drawer / Modal */}
+      {/* Mobile filters sheet */}
       <Modal
         isOpen={mobileModalOpen}
         onClose={() => setMobileModalOpen(false)}
-        title="Filter Campus Issues"
-        description="Filter issues by category, status, and campus building locations."
+        title="Filter issues"
+        description="Pick a category, status or location."
         maxWidth="max-w-md"
       >
         <div className="space-y-5 py-2">
-          {/* Category */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <fieldset className="space-y-2">
+            <legend className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
               Category
-            </label>
+            </legend>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => onCategoryChange('all')}
-                className={cn(
-                  'p-2.5 rounded-xl text-xs font-semibold text-left border transition-colors flex items-center justify-between',
-                  category === 'all'
-                    ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300'
-                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300'
-                )}
+                onClick={() => onCategoryChange('')}
+                aria-pressed={category === ''}
+                className={optionButtonClass(category === '')}
               >
                 <span>All Categories</span>
-                {category === 'all' && <Check className="w-3.5 h-3.5" />}
+                {category === '' && <Check className="w-3.5 h-3.5" aria-hidden="true" />}
               </button>
               {CATEGORIES.map((cat) => (
                 <button
                   key={cat.id}
                   type="button"
-                  onClick={() => onCategoryChange(cat.id)}
-                  className={cn(
-                    'p-2.5 rounded-xl text-xs font-semibold text-left border transition-colors flex items-center justify-between',
-                    category.toLowerCase() === cat.id
-                      ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300'
-                      : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300'
-                  )}
+                  onClick={() => onCategoryChange(cat.label)}
+                  aria-pressed={category === cat.label}
+                  className={optionButtonClass(category === cat.label)}
                 >
                   <span>{cat.label}</span>
-                  {category.toLowerCase() === cat.id && <Check className="w-3.5 h-3.5" />}
+                  {category === cat.label && <Check className="w-3.5 h-3.5" aria-hidden="true" />}
                 </button>
               ))}
             </div>
-          </div>
+          </fieldset>
 
-          {/* Status */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <fieldset className="space-y-2">
+            <legend className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
               Status
-            </label>
+            </legend>
             <div className="grid grid-cols-2 gap-2">
-              {[
-                { id: 'all', label: 'All Statuses' },
-                { id: 'open', label: 'Open' },
-                { id: 'in progress', label: 'In Progress' },
-                { id: 'resolved', label: 'Resolved' },
-              ].map((st) => (
+              {['', ...STATUS_LIST].map((name) => (
                 <button
-                  key={st.id}
+                  key={name || 'all'}
                   type="button"
-                  onClick={() => onStatusChange(st.id)}
-                  className={cn(
-                    'p-2.5 rounded-xl text-xs font-semibold text-left border transition-colors flex items-center justify-between',
-                    status.toLowerCase() === st.id
-                      ? 'border-brand-500 bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300'
-                      : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300'
-                  )}
+                  onClick={() => onStatusChange(name)}
+                  aria-pressed={status === name}
+                  className={optionButtonClass(status === name)}
                 >
-                  <span>{st.label}</span>
-                  {status.toLowerCase() === st.id && <Check className="w-3.5 h-3.5" />}
+                  <span>{name || 'All statuses'}</span>
+                  {status === name && <Check className="w-3.5 h-3.5" aria-hidden="true" />}
                 </button>
               ))}
             </div>
-          </div>
+          </fieldset>
 
-          {/* Location */}
           <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <label
+              htmlFor="mobile-location"
+              className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300"
+            >
               Location
             </label>
             <select
+              id="mobile-location"
               value={location}
               onChange={(e) => onLocationChange(e.target.value)}
-              className="w-full text-xs font-semibold p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
+              className={cn(selectClass, 'w-full')}
             >
-              <option value="all">All Campus Locations</option>
-              {CAMPUS_LOCATIONS.map((loc) => (
-                <option key={loc} value={loc}>
-                  {loc}
+              <option value="">All locations</option>
+              {locationOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
             <Button
               type="button"
               variant="outline"
@@ -298,7 +273,7 @@ export function IssueFilters({
                 setMobileModalOpen(false)
               }}
             >
-              Reset
+              Clear filters
             </Button>
             <Button
               type="button"
@@ -306,7 +281,7 @@ export function IssueFilters({
               className="flex-1"
               onClick={() => setMobileModalOpen(false)}
             >
-              Apply Filters
+              Show results
             </Button>
           </div>
         </div>
