@@ -47,10 +47,10 @@ export const listIssues = asyncHandler(async (req, res) => {
   ok(res, { items, page, limit, total, totalPages });
 });
 
-// GET /issues/similar -> 200 { items } with up to 3 possible duplicates (same category + building, not Resolved)
+// GET /issues/similar -> 200 with an ARRAY of up to 3 possible duplicates, [] when there are none.
+// Each one is { id, title, location, status, upvoteCount }. Same category + building, not Resolved.
 export const findSimilar = asyncHandler(async (req, res) => {
-  const items = await issueModel.findSimilar({ ...req.validated.query, userId: req.user.id });
-  ok(res, { items });
+  ok(res, await issueModel.findSimilar(req.validated.query));
 });
 
 // GET /issues/:id -> 200 issue + comments + status history

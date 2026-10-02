@@ -95,13 +95,14 @@ export const listIssuesQuerySchema = z.object({
   ),
 });
 
-// GET /issues/similar?title=&category=&building=
+// GET /issues/similar?title=&category=&building=  (title: at least 5 characters after trim)
 // A duplicate needs the same category AND the same building, so all three are required.
 export const similarQuerySchema = z.object({
   title: z
     .string({ error: 'Title is required' })
     .trim()
-    .min(3, 'Title must be at least 3 characters')
+    .min(1, 'Title is required') // first rule so an empty title says "required"
+    .min(5, 'Title must be at least 5 characters')
     .max(120, 'Title must be at most 120 characters'),
   category: z.enum(CATEGORIES, { error: categoryMessage }),
   building: z

@@ -228,34 +228,61 @@ export async function updateStatus(id, { oldStatus, newStatus, note, commentText
   });
 }
 
-// GET /issues/similar: up to 3 possible duplicates. An issue matches only if ALL of these are true:
+// GET /issues/similar: the duplicate warning. Up to 3 issues, most similar first.
+// An issue matches only if ALL of these are true:
 //   - same category
 //   - same building (case-insensitive). The building is the part of the location before the first comma,
-//     so "Hall 2, Room 214" has building "Hall 2". We cut the search value the same way, so passing
-//     a full location also works.
+//     so "Hall 2, Room 214" has building "Hall 2". The search value is cut the same way,
+//     so passing a full location also works.
 //   - not Resolved (the problem may have come back)
-//   - title similarity > 0.2 (pg_trgm, the extension created in schema.sql)
-// Most similar first.
-export async function findSimilar({ title, category, building, userId }) {
+//   - title similarity > 0.2 (pg_trgm, the extension created in sql/schema.sql)
+// Only the few fields the warning needs: { id, title, location, status, upvoteCount }.
+export async function findSimilar({ title, category, building }) {
   const result = await query(
-    `${ISSUE_SELECT}
+    `SELECT i.id, i.title, i.location, i.status,
+            (SELECT COUNT(*)::int FROM upvotes uv WHERE uv.issue_id = i.id) AS upvote_count
+     FROM issues i
      WHERE i.status <> 'Resolved'
-       AND i.category = $3
-       AND lower(trim(split_part(i.location, ',', 1))) = lower(trim(split_part($4, ',', 1)))
-       AND similarity(i.title, $2) > 0.2
-     ORDER BY similarity(i.title, $2) DESC, i.id DESC
+       AND i.category = $2
+       AND lower(trim(split_part(i.location, ',', 1))) = lower(trim(split_part($3, ',', 1)))
+       AND similarity(i.title, $1) > 0.2
+     ORDER BY similarity(i.title, $1) DESC, i.id DESC
      LIMIT 3`,
-    [userId, title, category, building],
+    [title, category, building],
   );
-  return result.rows.map(toIssue);
+  return result.rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    location: row.location,
+    status: row.status,
+    upvoteCount: row.upvote_count,
+  }));
 }
 
-// GET /stats numbers for the admin dashboard (plan Section 6.3). Every group is listed even when it is 0.
+// Every count below is computed by the database each time (COUNT / AVG), nothing is stored.
+// "Group names" such as every status and every category are listed even when their count is 0:
+// unnest() turns the fixed list into rows and LEFT JOIN keeps a row (with count 0) when nothing matches.
+const COUNT_BY_STATUS_SQL = `
+  SELECT g.name, COUNT(i.id)::int AS n
+  FROM unnest($1::text[]) WITH ORDINALITY AS g(name, position)
+  LEFT JOIN issues i ON i.status = g.name
+  GROUP BY g.name, g.position
+  ORDER BY g.position`;
+
+const COUNT_BY_CATEGORY_SQL = `
+  SELECT g.name, COUNT(i.id)::int AS n
+  FROM unnest($1::text[]) WITH ORDINALITY AS g(name, position)
+  LEFT JOIN issues i ON i.category = g.name
+  GROUP BY g.name, g.position
+  ORDER BY g.position`;
+
+// GET /stats numbers for the admin dashboard (plan Section 6.3).
 export async function getStats() {
-  const [statusRows, categoryRows, topRows, avgRow, recentRow, locationRows] = await Promise.all([
-    query('SELECT status, COUNT(*)::int AS n FROM issues GROUP BY status'),
-    query('SELECT category, COUNT(*)::int AS n FROM issues GROUP BY category'),
-    // most upvoted issues (only issues that have at least one upvote)
+  const [totalRow, statusRows, categoryRows, topRows, avgRow, recentRow, locationRows] = await Promise.all([
+    query('SELECT COUNT(*)::int AS n FROM issues'),
+    query(COUNT_BY_STATUS_SQL, [STATUSES]), // $1 = the fixed list of statuses (a parameter, like every value)
+    query(COUNT_BY_CATEGORY_SQL, [CATEGORIES]),
+    // the 5 most upvoted issues (only issues that have at least one upvote)
     query(
       `SELECT i.id, i.title, COUNT(uv.user_id)::int AS upvote_count
        FROM issues i
@@ -264,7 +291,7 @@ export async function getStats() {
        ORDER BY upvote_count DESC, i.created_at DESC
        LIMIT 5`,
     ),
-    // average hours from report to resolution; AVG of no rows is NULL, so this is null until something is resolved
+    // average hours from report to resolution. AVG of no rows is NULL, so this is NULL until something is resolved.
     query(
       `SELECT ROUND(AVG(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600)::numeric, 1) AS avg_hours
        FROM issues
@@ -275,31 +302,28 @@ export async function getStats() {
        FROM issues
        WHERE status = 'Resolved' AND resolved_at >= now() - interval '7 days'`,
     ),
-    // "hotspots": the buildings with the most issues (building = location text before the first comma)
+    // "hotspots": the 5 buildings with the most issues. The building is the part of the location before the
+    // first comma; "Hall 2" and "hall 2" count as the same building (same rule as /issues/similar).
     query(
-      `SELECT trim(split_part(location, ',', 1)) AS building, COUNT(*)::int AS n
+      `SELECT MIN(trim(split_part(location, ',', 1))) AS building, COUNT(*)::int AS n
        FROM issues
-       GROUP BY building
-       ORDER BY n DESC, building ASC
+       WHERE trim(split_part(location, ',', 1)) <> ''
+       GROUP BY lower(trim(split_part(location, ',', 1)))
+       ORDER BY n DESC, lower(trim(split_part(location, ',', 1))) ASC
        LIMIT 5`,
     ),
   ]);
 
-  const byStatus = Object.fromEntries(STATUSES.map((status) => [status, 0]));
-  for (const row of statusRows.rows) byStatus[row.status] = row.n;
-
-  const byCategory = Object.fromEntries(CATEGORIES.map((category) => [category, 0]));
-  for (const row of categoryRows.rows) byCategory[row.category] = row.n;
-
-  const avgHours = avgRow.rows[0].avg_hours; // numeric comes back as a string, or null
+  // The database returns numeric AVG as a string, or null. Never let a NaN reach the client.
+  const avgHours = avgRow.rows[0].avg_hours === null ? null : Number(avgRow.rows[0].avg_hours);
 
   return {
-    total: Object.values(byStatus).reduce((sum, n) => sum + n, 0),
-    byStatus,
-    byCategory,
+    total: totalRow.rows[0].n,
+    byStatus: Object.fromEntries(statusRows.rows.map((row) => [row.name, row.n])),
+    byCategory: Object.fromEntries(categoryRows.rows.map((row) => [row.name, row.n])),
     topUpvoted: topRows.rows.map((row) => ({ id: row.id, title: row.title, upvoteCount: row.upvote_count })),
-    avgResolutionHours: avgHours === null ? null : Number(avgHours),
+    avgResolutionHours: Number.isFinite(avgHours) ? avgHours : null,
     resolvedLast7Days: recentRow.rows[0].n,
-    topLocations: locationRows.rows.map((row) => ({ location: row.building, count: row.n })),
+    topLocations: locationRows.rows.map((row) => ({ building: row.building, count: row.n })),
   };
 }
