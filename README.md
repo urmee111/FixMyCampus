@@ -10,6 +10,7 @@ A complaint and maintenance tracker for campus life. Students report broken fans
 | API (backend) | https://fixmycampus-api.onrender.com |
 | API health check | https://fixmycampus-api.onrender.com/health |
 | Source code | https://github.com/urmee111/FixMyCampus |
+| Pitch deck (5 slides) | [`docs/FixMyCampus_Pitch.pptx`](docs/FixMyCampus_Pitch.pptx) |
 
 > The API runs on a free Render instance. After a period of inactivity the first request can take up to about a minute while the server wakes up.
 
