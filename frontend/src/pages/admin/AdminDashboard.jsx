@@ -273,7 +273,7 @@ export function AdminDashboard() {
                   <div className="min-w-0 flex-1 space-y-1.5">
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusBadge status={issue.status} size="sm" />
-                      <PriorityBadge upvotes={issue.upvoteCount} priority={issue.priority} size="sm" />
+                      <PriorityBadge upvotes={issue.upvoteCount} size="sm" />
                       <span className="text-xs text-slate-600 dark:text-slate-400">#{issue.id}</span>
                     </div>
                     <Link

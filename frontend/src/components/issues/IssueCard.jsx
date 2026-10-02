@@ -58,11 +58,8 @@ export function IssueCard({ issue, className }) {
                 {issue.category}
               </span>
             </div>
-
-            {/* The API's priority is used until the upvote count changes on screen, then it is recalculated (10+ High, 5-9 Medium) */}
             <PriorityBadge
               upvotes={upvotes}
-              priority={upvotes === issue.upvoteCount ? issue.priority : undefined}
               size="sm"
             />
           </div>

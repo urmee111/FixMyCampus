@@ -92,4 +92,14 @@ export function formatCount(count = 0) {
     return `${(count / 1000).toFixed(1)}k`
   }
   return count.toString()
+}// Priority is worked out here from the upvote count (the API's "priority" field is ignored).
+export const HIGH_PRIORITY_MIN_UPVOTES = 5 // 5 or more -> High
+export const MEDIUM_PRIORITY_MIN_UPVOTES = 3 // 3 or 4 -> Medium, 0 to 2 -> Low
+
+export function getPriority(upvoteCount = 0) {
+  if (upvoteCount >= HIGH_PRIORITY_MIN_UPVOTES) return PRIORITIES.HIGH
+  if (upvoteCount >= MEDIUM_PRIORITY_MIN_UPVOTES) return PRIORITIES.MEDIUM
+  return PRIORITIES.LOW
 }
+
+

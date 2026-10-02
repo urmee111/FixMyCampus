@@ -1,38 +1,28 @@
 # FixMyCampus Frontend
 
-React and Vite frontend for campus issue reporting, community prioritization, and maintenance tracking.
+The web app of FixMyCampus: students report campus problems, upvote them and follow their status; staff / admins update the status and see statistics. It talks to the FixMyCampus REST API.
 
-## Run locally
+## Stack
 
-```powershell
-npm ci
-Copy-Item .env.example .env
-npm run dev
+React 19, Vite, Tailwind CSS 3, react-router-dom, lucide-react. Plain JavaScript (ES modules).
+
+## Run it
+
+```bash
+cd frontend
+npm install
+cp .env.example .env     # then set VITE_API_BASE_URL
+npm run dev              # http://localhost:5173
+npm run build            # production build into dist/
 ```
 
-Set `VITE_API_BASE_URL` to the backend origin. `VITE_USE_MOCK=true` enables the in-memory demo adapter; set it to `false` when the API is ready. Frontend environment variables are public configuration, not secret storage.
+`.env` has one setting, `VITE_API_BASE_URL`: the address of the backend, for example `http://localhost:5000`. It is public configuration, never put secrets in it.
 
-Mock sign-in accepts any password of at least six characters. Use `tanjim@campus.edu` for the student view or `admin.estate@campus.edu` for the admin view; the password is `password123`.
+## Folders
 
-## Routes
+- `src/api/` one function per backend endpoint
+- `src/pages/` one file per page, `src/components/` shared UI
+- `src/lib/` constants (categories, statuses, campus locations), formatters, validators
+- `src/styles/tokens.css` the colour theme (light and dark)
 
-- `/` landing page
-- `/login`, `/signup` authentication
-- `/issues` searchable and filterable issue registry
-- `/issues/:id` details, comments, upvotes, and status history
-- `/issues/:id/edit` report editing
-- `/report` issue submission with optional photo
-- `/my-reports` student report tracking
-- `/admin` operations dashboard
-- `/admin/locations` reporting location directory
-
-## API surface
-
-All HTTP requests are centralized under `src/api/`. The adapter supports auth signup/login, issues list/detail/create/update/delete, upvotes, comments, status updates, student reports, duplicate checks, and statistics. Mock data and actions are isolated in `src/data/` and the API modules.
-
-## Checks
-
-```powershell
-npm run lint
-npm run build
-```
+Priority labels (High: 5 or more upvotes, Medium: 3 or 4, Low is not shown) are worked out in `src/lib/formatters.js`.

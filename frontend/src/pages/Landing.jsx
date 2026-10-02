@@ -36,7 +36,7 @@ const STEPS = [
   {
     icon: ChevronUp,
     title: 'Upvote it',
-    text: 'Students upvote what affects them. 5 upvotes make an issue Medium priority, 10 make it High.',
+    text: 'Students upvote what affects them. 3 upvotes make an issue Medium priority, 5 make it High.',
   },
   {
     icon: ListChecks,

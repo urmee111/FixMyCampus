@@ -1,5 +1,5 @@
 import React from 'react'
-import { getPriorityFromUpvotes } from '../../lib/formatters'
+import { getPriority } from '../../lib/formatters'
 import { PRIORITIES, PRIORITY_CONFIG } from '../../lib/constants'
 import { cn } from '../../lib/utils'
 import { Flame, AlertTriangle, ArrowDown } from 'lucide-react'
@@ -10,16 +10,17 @@ const PRIORITY_ICONS = {
   [PRIORITIES.LOW]: ArrowDown,
 }
 
-// High (10+ upvotes) = red, Medium (5-9) = orange, Low = slate.
-// `priority` is the word the API sends; without it the badge works it out from the upvote count with the same rule.
+// High (5 or more upvotes) = red, Medium (3-4) = orange. Low is hidden. The level comes from getPriority(), never from the API.
 export function PriorityBadge({
   upvotes,
-  priority: explicitPriority,
   size = 'md',
   showIcon = true,
   className,
 }) {
-  const derivedPriority = explicitPriority || getPriorityFromUpvotes(upvotes ?? 0)
+  const derivedPriority = getPriority(upvotes ?? 0)
+  // Low is not shown at all
+  if (derivedPriority === PRIORITIES.LOW) return null
+
   const config = PRIORITY_CONFIG[derivedPriority] || PRIORITY_CONFIG[PRIORITIES.LOW]
   const Icon = PRIORITY_ICONS[derivedPriority] || ArrowDown
 
