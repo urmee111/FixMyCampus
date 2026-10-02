@@ -3,7 +3,6 @@ import { NavLink, Link } from 'react-router-dom'
 import {
   Compass,
   FileText,
-  PlusCircle,
   LayoutDashboard,
   MapPin,
 } from 'lucide-react'
@@ -13,11 +12,10 @@ import { cn } from '../../lib/utils'
 export function Sidebar({ className }) {
   const { isAdmin } = useAuth()
 
-  // Students: browse, report, follow their own reports. Staff / Admin: dashboard and moderation.
+  // Only real pages. Students: browse and follow their own reports (reporting is the top bar button). Staff / Admin: dashboard and moderation.
   const studentLinks = [
     { to: '/issues', label: 'Campus Issues', icon: Compass },
     { to: '/my-reports', label: 'My Reports', icon: FileText },
-    { to: '/report', label: 'Report Issue', icon: PlusCircle, isPrimary: true },
   ]
 
   const adminLinks = [
@@ -75,8 +73,7 @@ export function Sidebar({ className }) {
                   'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors duration-150',
                   isActive
                     ? 'bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white',
-                  item.isPrimary && !isActive && 'text-brand-700 dark:text-brand-300'
+                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                 )
               }
             >

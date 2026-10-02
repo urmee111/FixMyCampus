@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { StatCard } from '../../components/dashboard/StatCard'
 import { BarList, StackedBar } from '../../components/dashboard/Charts'
@@ -24,7 +24,6 @@ import {
   Flame,
   ArrowRight,
   ChevronUp,
-  QrCode,
 } from 'lucide-react'
 
 const quickButtonClass =
@@ -36,6 +35,7 @@ export function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [pendingIssueId, setPendingIssueId] = useState(null)
+  const statusLock = useRef(false) // set at once, so a double click can never send two requests
   const toast = useToast()
 
   // silent = refresh the numbers after a status change without showing skeletons again
@@ -61,6 +61,8 @@ export function AdminDashboard() {
 
   // Quick status buttons skip the note. Use the issue page when you want to write one.
   const handleQuickStatus = async (issue, nextStatus) => {
+    if (statusLock.current) return
+    statusLock.current = true
     setPendingIssueId(issue.id)
     try {
       await updateStatus(issue.id, nextStatus)
@@ -69,6 +71,7 @@ export function AdminDashboard() {
     } catch (err) {
       toast.error(err.error?.message || 'Could not update the status.')
     } finally {
+      statusLock.current = false
       setPendingIssueId(null)
     }
   }
@@ -90,15 +93,6 @@ export function AdminDashboard() {
       <PageHeader
         title="Dashboard"
         description="Live numbers from all reported issues."
-        actions={
-          <Link
-            to="/admin/locations"
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          >
-            <QrCode className="w-4 h-4" aria-hidden="true" />
-            Location QR links
-          </Link>
-        }
       />
 
       {/* Numbers */}

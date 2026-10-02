@@ -39,7 +39,7 @@ export const PasswordInput = forwardRef(function PasswordInput(
           error
             ? 'border-red-400 dark:border-red-700/80 focus:ring-red-500/30 focus:border-red-500'
             : 'border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600',
-          disabled && 'bg-slate-50 dark:bg-slate-900/40 text-slate-600 cursor-not-allowed',
+          disabled && 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 cursor-not-allowed',
           className
         )}
         {...props}

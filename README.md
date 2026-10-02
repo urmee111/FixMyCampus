@@ -1,118 +1,145 @@
 # FixMyCampus
 
-A campus issue tracker: students **report** broken things (fans, water, WiFi...), **upvote** problems that
-affect many people, and **track** them until they are **resolved**. Admins get a dashboard with stats,
-charts and QR codes for locations. Built in 10 hours for a hackathon.
+A complaint and maintenance tracker for campus life. Students report broken fans, leaking taps, dead street lights and dirty washrooms. Peers upvote the issues that matter most, and staff assign, track and resolve them in the open, so nobody wonders whether a complaint was lost.
 
-> Full game plan: [docs/FixMyCampus_Hackathon_Plan.md](docs/FixMyCampus_Hackathon_Plan.md)
+## Live links
 
-## Features
-
-TODO: fill in at the end (see plan Section 15). Planned: report issues with photo, upvotes, comments,
-duplicate warning, priority labels, status timeline, admin dashboard, QR code reporting, dark mode.
-
-## Tech stack
-
-| Layer | Technology |
+| What | Link |
 |---|---|
-| Frontend | React + Vite, Tailwind CSS v4 (class-based dark mode), react-router-dom, axios, react-hot-toast, recharts, qrcode.react, lucide-react |
-| Backend | Node.js + Express 5, plain SQL with `pg`, zod validation, JWT auth, bcryptjs, multer, helmet, cors, express-rate-limit |
-| Database | PostgreSQL on Supabase (+ Supabase Storage for photos) |
-| Hosting | Vercel (frontend), Render (backend) |
+| Web app (frontend) | `<VERCEL_LINK>` |
+| API (backend) | https://fixmycampus-api.onrender.com |
+| API health check | https://fixmycampus-api.onrender.com/health |
+| Source code | https://github.com/urmee111/FixMyCampus |
 
-## Setup
-
-You need Node.js 20+ and a Supabase project (free).
-
-### 1. Database
-1. Create a Supabase project.
-2. Open the SQL editor and run [backend/sql/schema.sql](backend/sql/schema.sql).
-3. Create a **public** storage bucket named `issue-photos`.
-
-### 2. Backend
-```bash
-cd backend
-npm install
-cp .env.example .env     # then fill in the values (see "Environment variables")
-npm run dev              # http://localhost:5000  ->  check http://localhost:5000/health
-```
-Other scripts: `npm start` (production), `npm run seed` (demo data, not built yet).
-
-### 3. Frontend
-```bash
-cd frontend
-npm install
-cp .env.example .env     # VITE_API_URL=http://localhost:5000
-npm run dev              # http://localhost:5173
-```
-Production build: `npm run build`.
-
-## Environment variables
-
-**backend/.env** (never commit this file)
-
-| Name | What it is |
-|---|---|
-| `PORT` | Port of the API (default 5000) |
-| `DATABASE_URL` | Supabase Postgres connection string |
-| `JWT_SECRET` | Long random text used to sign login tokens |
-| `JWT_EXPIRES_IN` | Token lifetime, e.g. `7d` |
-| `ADMIN_SIGNUP_CODE` | Secret code people must enter to sign up as admin |
-| `SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_SERVICE_KEY` | Supabase service key (secret, backend only) |
-| `SUPABASE_BUCKET` | Storage bucket for photos (`issue-photos`) |
-| `FRONTEND_URL` | Frontend address allowed by CORS |
-| `ENABLE_ASSISTANT` | `false` (optional AI assistant stretch goal) |
-
-**frontend/.env**
-
-| Name | What it is |
-|---|---|
-| `VITE_API_URL` | Address of the backend API |
+> The API runs on a free Render instance. After a period of inactivity the first request can take up to about a minute while the server wakes up.
 
 ## Test logins
-
-Created by the seed script (plan Section 14).
 
 | Role | Email | Password |
 |---|---|---|
 | Student | `student@fixmycampus.test` | `Student@123` |
 | Student 2 | `student2@fixmycampus.test` | `Student@123` |
-| Admin | `admin@fixmycampus.test` | `Admin@123` |
+| Staff / Admin | `admin@fixmycampus.test` | `Admin@123` |
+
+## Roles
+
+| | Student | Staff / Admin |
+|---|---|---|
+| Report issues, edit (own, while Open) and delete (own) | Yes | No (staff review and resolve) |
+| Upvote an issue (one per user) | Yes | No |
+| Comment | Yes | Yes (shown with an "Official" badge) |
+| Change status (Open, In Progress, Resolved) | No (403) | Yes |
+| Delete any issue (moderation) | No | Yes |
+| My Reports | Yes | No |
+| Dashboard with statistics | No | Yes |
+
+## Features
+
+**Core (MVP)**
+- Signup and login with role-based access (Student or Staff / Admin). Admin signup needs a secret admin code.
+- Report an issue: title, description, category (Electrical, Water, Cleanliness, Furniture, Internet, Other), location and an optional photo.
+- Browse all issues with search and filters (category, status, location), sorting and pagination.
+- Upvote an issue so the most urgent ones rise to the top. One upvote per user, enforced by the database.
+- Comment on an issue to add updates.
+- Admin updates the status with an optional note. The note appears as an official comment.
+- Student dashboard ("My Reports") and admin dashboard with statistics.
+
+**Bonus**
+- Duplicate warning: while typing a title, similar open issues in the same category and location are suggested (PostgreSQL `pg_trgm`). It only warns; the student can still report.
+- Priority label computed from the upvote count (High, Medium, Low).
+- Sorting (most upvoted, newest, oldest) and pagination on the listing endpoint.
+- Average resolution time and other numbers on the admin dashboard.
+- Status timeline on every issue (who changed what, when, and why).
+- Dark mode and a mobile-friendly layout.
+
+## Tech stack
+
+| Layer | Tools |
+|---|---|
+| Frontend | React, Vite, Tailwind CSS |
+| Backend | Node.js, Express |
+| Validation and security | zod, bcryptjs, JSON Web Tokens, helmet, CORS, express-rate-limit |
+| Database | PostgreSQL on Supabase (plain SQL, no ORM) |
+| Photo storage | Supabase Storage |
+| API testing | Thunder Client / Postman |
+| Hosting | Vercel (frontend), Render (backend), Supabase (database and storage) |
+
+## Architecture
+
+```
+User -> Frontend (React) -> Backend API (Express: login check, role check, validation) -> PostgreSQL
+                                                                                       (users, issues, comments, upvotes, status_history)
+```
+
+**Database tables**
+
+| Table | Main fields |
+|---|---|
+| `users` | id, name, email (unique), password_hash, role (`student` / `admin`) |
+| `issues` | id, title, description, category, location, photo_url, status, created_by, created_at, updated_at, resolved_at |
+| `comments` | id, issue_id, user_id, text, created_at |
+| `upvotes` | issue_id, user_id (composite primary key = one upvote per user) |
+| `status_history` | id, issue_id, old_status, new_status, changed_by, note, changed_at |
+
+Upvote and comment counts are computed with `COUNT`, never stored, so they cannot go out of sync. Check constraints and foreign keys with `ON DELETE CASCADE` keep the data clean.
 
 ## API endpoints
 
-All responses use `{ "success": true, "data": ... }` or `{ "success": false, "error": { "code", "message", "fields"? } }`.
-Protected endpoints need the header `Authorization: Bearer <token>`. Plus `GET /health` (public).
+All responses use one shape: `{ "success": true, "data": ... }` or `{ "success": false, "error": { "code", "message", "fields" } }`.
 
-| # | Method & path | Who | Success | Main errors |
+| # | Endpoint | Who can call it | Success | Main errors |
 |---|---|---|---|---|
-| 1 | `POST /auth/signup` | Public | 201 + token + user | 400 invalid fields, 409 email exists, 403 wrong admin code |
-| 2 | `POST /auth/login` | Public | 200 + token + user | 400 missing fields, 401 invalid credentials, 429 too many tries |
-| 3 | `POST /issues` | Logged in | 201 + issue | 400 validation, 401 |
-| 4 | `GET /issues` | Logged in | 200 + paginated list | 400 bad filter value |
-| 5 | `GET /issues/:id` | Logged in | 200 + issue + comments + history | 400 bad id, 404 |
-| 6 | `PUT /issues/:id` | Owner only | 200 + issue | 403 not owner, 409 not editable (not Open), 400, 404 |
+| 1 | `POST /auth/signup` | Public | 201 + token | 400 validation, 403 wrong admin code, 409 email exists |
+| 2 | `POST /auth/login` | Public | 200 + token | 400, 401 invalid email or password, 429 too many attempts |
+| 3 | `POST /issues` | Logged in | 201 | 400 validation (for example empty title), 401 |
+| 4 | `GET /issues` | Logged in | 200 (search, filters, sort, pagination) | 400 invalid filter, 401 |
+| 5 | `GET /issues/:id` | Logged in | 200 (with comments and status history) | 400 bad id, 404 |
+| 6 | `PUT /issues/:id` | Owner only, while Open | 200 | 400, 403 not owner, 404, 409 not editable |
 | 7 | `DELETE /issues/:id` | Owner or admin | 200 | 403, 404 |
-| 8 | `POST /issues/:id/upvote` | Student | 200 + `{ upvoted, upvoteCount }` | 400 own issue / resolved, 403 admin, 404 |
-| 9 | `POST /issues/:id/comments` | Logged in | 201 + comment | 400 empty/too long, 404 |
-| 10 | `PATCH /issues/:id/status` | **Admin only** | 200 + issue | 403 student, 400 invalid/same status, 404 |
-| 11 | `GET /my/issues` | Logged in | 200 + list | 401 |
-| 12 | `GET /stats` | **Admin only** | 200 + stats | 403 student |
-| 13 | `GET /issues/similar?title=&category=&building=` | Logged in | 200 + up to 3 possible duplicates | 400 title too short / invalid category |
+| 8 | `POST /issues/:id/upvote` | Students | 200 (toggles on and off) | 400 own or resolved issue, 403 admin, 404 |
+| 9 | `POST /issues/:id/comments` | Logged in | 201 | 400 empty or too long, 404 |
+| 10 | `PATCH /issues/:id/status` | **Admin only** | 200 | **403 student**, 400 invalid, same or not allowed status change, 404 |
+| 11 | `GET /my/issues` | Logged in | 200 (items and counts by status) | 401 |
+| 12 | `GET /stats` | **Admin only** | 200 | 403 student |
+| 13 | `GET /issues/similar` | Logged in | 200 (up to 3 possible duplicates) | 400 |
 
-## Live links
+Allowed status changes: Open to In Progress, Open to Resolved, In Progress to Resolved, and Resolved back to Open.
 
-TODO: frontend (Vercel) · backend (Render) · demo video
+Screenshots of every endpoint working are in `docs/screenshots/`.
 
-## Screenshots
+## Role restriction and validation (required demonstrations)
 
-TODO
+- **Role restriction:** a student calling `PATCH /issues/:id/status` gets `403 "Only admins can change status"`.
+- **Validation error:** `POST /issues` with an empty title returns `400 "Title is required"` with the field name.
+
+## Run it locally
+
+Requirements: Node.js 18 or newer and a PostgreSQL database (Supabase works).
+
+**Backend**
+
+```bash
+cd backend
+npm install
+cp .env.example .env     # then fill in the values
+npm run dev              # http://localhost:5000
+```
+
+Run `backend/sql/schema.sql` once in your database. Environment variables (names only): `PORT`, `DATABASE_URL`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `ADMIN_SIGNUP_CODE`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `SUPABASE_BUCKET`, `FRONTEND_URL`.
+
+**Frontend**
+
+```bash
+cd frontend
+npm install
+cp .env.example .env     # set VITE_API_BASE_URL to the backend address
+npm run dev              # http://localhost:5173
+```
 
 ## Team
 
-| Member | Role | Owns |
-|---|---|---|
-| TODO name | A: Backend lead | `backend/` |
-| TODO name | B: Frontend lead | `frontend/` (except admin files) |
-| TODO name | C: Data, DevOps and QA lead | `backend/sql/`, `docs/`, admin dashboard files |
+| Name | Part |
+|---|---|
+| Noushin Anamika Urmee | Backend, database, deployment |
+| Arina-Arni | Frontend |
+| `<third member>` | `<part>` |

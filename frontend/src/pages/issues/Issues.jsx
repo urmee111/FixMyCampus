@@ -54,17 +54,6 @@ export function Issues() {
       <PageHeader
         title="Campus issues"
         description="Browse what has been reported. Upvote the problems that affect you so they get fixed sooner."
-        actions={
-          !isAdmin && (
-            <Button
-              variant="primary"
-              onClick={() => navigate('/report')}
-              leftIcon={<Plus className="w-4 h-4" aria-hidden="true" />}
-            >
-              Report an Issue
-            </Button>
-          )
-        }
       />
 
       {/* Filters. The search box is in the top bar and writes the same ?q= you see here. */}

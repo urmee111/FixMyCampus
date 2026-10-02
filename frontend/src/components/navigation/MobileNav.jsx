@@ -3,7 +3,6 @@ import { NavLink, Link, useLocation } from 'react-router-dom'
 import {
   Compass,
   FileText,
-  PlusCircle,
   LayoutDashboard,
   MapPin,
   X,
@@ -25,7 +24,6 @@ export function MobileDrawer({ isOpen, onClose }) {
   const studentLinks = [
     { to: '/issues', label: 'Campus Issues', icon: Compass },
     { to: '/my-reports', label: 'My Reports', icon: FileText },
-    { to: '/report', label: 'Report Issue', icon: PlusCircle },
   ]
 
   const adminLinks = [
@@ -134,11 +132,6 @@ export function MobileBottomBar() {
 
       {!isAdmin ? (
         <>
-          <NavLink to="/report" className={bottomLinkClass}>
-            <PlusCircle className="w-5 h-5 stroke-[2]" aria-hidden="true" />
-            <span>Report</span>
-          </NavLink>
-
           <NavLink to="/my-reports" className={bottomLinkClass}>
             <FileText className="w-5 h-5 stroke-[2]" aria-hidden="true" />
             <span>My Reports</span>

@@ -46,6 +46,7 @@ export function ReportIssue() {
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const fileInputRef = useRef(null)
+  const inFlight = useRef(false) // blocks a second submit in the same instant
 
   // Duplicate warning: similar open issues in the same category and building
   const [similarIssues, setSimilarIssues] = useState([])
@@ -124,7 +125,7 @@ export function ReportIssue() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (isSubmitting) return
+    if (inFlight.current) return
 
     const validation = validateIssueForm(formData)
     if (!validation.isValid) {
@@ -133,6 +134,7 @@ export function ReportIssue() {
     }
 
     setErrors({})
+    inFlight.current = true
     setIsSubmitting(true)
 
     try {
@@ -154,6 +156,7 @@ export function ReportIssue() {
         toast.error(error.error?.message || "We couldn't submit your issue. Please try again.")
       }
     } finally {
+      inFlight.current = false
       setIsSubmitting(false)
     }
   }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { AuthShell } from '../../components/auth/AuthShell'
 import { FormField } from '../../components/ui/FormField'
@@ -14,6 +14,7 @@ export function Login() {
   const [formData, setFormData] = useState({ email: '', password: '' })
   const [errors, setErrors] = useState({})
   const [isLoading, setIsLoading] = useState(false)
+  const inFlight = useRef(false) // blocks a second submit in the same instant
 
   const { login } = useAuth()
   const toast = useToast()
@@ -30,7 +31,7 @@ export function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (isLoading) return
+    if (inFlight.current) return
 
     const validation = validateLoginForm(formData)
     if (!validation.isValid) {
@@ -39,6 +40,7 @@ export function Login() {
     }
 
     setErrors({})
+    inFlight.current = true
     setIsLoading(true)
     try {
       const res = await login({ email: formData.email.trim(), password: formData.password })
@@ -55,6 +57,7 @@ export function Login() {
       if (Object.keys(fieldErrors).length) setErrors(fieldErrors)
       toast.error(err.error?.message || "We couldn't sign you in. Please try again.", 'Sign in failed')
     } finally {
+      inFlight.current = false
       setIsLoading(false)
     }
   }
@@ -105,6 +108,7 @@ export function Login() {
           New here?{' '}
           <Link
             to="/signup"
+            state={location.state}
             className="font-semibold text-brand-700 hover:text-brand-800 dark:text-brand-300 dark:hover:text-brand-200 underline underline-offset-2"
           >
             Create account

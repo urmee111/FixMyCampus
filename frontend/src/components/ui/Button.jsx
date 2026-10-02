@@ -26,7 +26,7 @@ const BUTTON_SIZES = {
 }
 
 const BASE_CLASSES =
-  'inline-flex items-center justify-center select-none transition-colors duration-150 ease-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500'
+  'inline-flex items-center justify-center whitespace-nowrap select-none transition-colors duration-150 ease-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500'
 
 function buttonClasses({ variant = 'primary', size = 'md', disabled = false, className } = {}) {
   return cn(

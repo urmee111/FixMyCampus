@@ -188,14 +188,17 @@ export function Topbar({ onOpenMobileMenu }) {
           <Search className="w-5 h-5" aria-hidden="true" />
         </button>
 
+        {/* The ONE "Report Issue" button of the app (sidebar, page headers and mobile menus do not repeat it).
+            On phones it is an icon-only "+" button; the aria-label keeps the name for screen readers. */}
         {!isAdmin && (
           <Button
             size="sm"
             onClick={() => navigate('/report')}
-            leftIcon={<Plus className="w-3.5 h-3.5" aria-hidden="true" />}
-            className="hidden sm:inline-flex"
+            aria-label="Report Issue"
+            leftIcon={<Plus className="w-4 h-4 sm:w-3.5 sm:h-3.5" aria-hidden="true" />}
+            className="max-sm:w-9 max-sm:min-h-9 max-sm:px-0 max-sm:gap-0"
           >
-            Report Issue
+            <span className="hidden sm:inline">Report Issue</span>
           </Button>
         )}
 

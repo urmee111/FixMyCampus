@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { Card, CardContent } from '../../components/ui/Card'
@@ -37,6 +37,7 @@ export function EditIssue() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [blocked, setBlocked] = useState(null) // { title, message } when this user may not edit this issue
   const [loadError, setLoadError] = useState(null)
+  const inFlight = useRef(false) // blocks a second submit in the same instant
 
   useEffect(() => {
     let isCurrent = true
@@ -92,7 +93,7 @@ export function EditIssue() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (isSubmitting) return
+    if (inFlight.current) return
 
     const validation = validateIssueForm(formData)
     if (!validation.isValid) {
@@ -101,6 +102,7 @@ export function EditIssue() {
     }
 
     setErrors({})
+    inFlight.current = true
     setIsSubmitting(true)
     try {
       await updateIssue(id, {
@@ -121,6 +123,7 @@ export function EditIssue() {
         if (err.response?.status === 403 || err.response?.status === 409) navigate(`/issues/${id}`)
       }
     } finally {
+      inFlight.current = false
       setIsSubmitting(false)
     }
   }

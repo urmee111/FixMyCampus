@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { StatusBadge } from '../../components/ui/StatusBadge'
@@ -48,10 +48,15 @@ export function IssueDetails() {
   const [isSubmittingComment, setIsSubmittingComment] = useState(false)
 
   // Admin status change
-  const [nextStatus, setNextStatus] = useState('')
+  const [chosenStatus, setChosenStatus] = useState('')
   const [statusNote, setStatusNote] = useState('')
   const [statusErrors, setStatusErrors] = useState({})
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+
+  // Set at once when a request starts (state needs a render), so a double click can never send two requests
+  const deleteLock = useRef(false)
+  const commentLock = useRef(false)
+  const statusLock = useRef(false)
 
   // silent = reload after a change without replacing the page with a skeleton
   const loadIssue = useCallback(
@@ -83,14 +88,13 @@ export function IssueDetails() {
     }
   }, [isLoading, issue, hash])
 
-  // The status list changes after every status change: select the first allowed one again
+  // The allowed statuses change after every status change. If the chosen one is no longer allowed, the first allowed one is used.
   const allowedStatuses = issue ? NEXT_STATUSES[issue.status] || [] : []
-  const currentStatus = issue?.status
-  useEffect(() => {
-    setNextStatus((NEXT_STATUSES[currentStatus] || [])[0] || '')
-  }, [currentStatus])
+  const nextStatus = allowedStatuses.includes(chosenStatus) ? chosenStatus : allowedStatuses[0] || ''
 
   const handleDelete = async () => {
+    if (deleteLock.current) return
+    deleteLock.current = true
     setIsDeleting(true)
     try {
       await deleteIssue(issue.id)
@@ -100,13 +104,15 @@ export function IssueDetails() {
       toast.error(err.error?.message || 'Failed to delete the issue.')
       setIsDeleteOpen(false)
     } finally {
+      deleteLock.current = false
       setIsDeleting(false)
     }
   }
 
   const handleCommentSubmit = async (e) => {
     e.preventDefault()
-    if (isSubmittingComment) return
+    if (commentLock.current) return
+    commentLock.current = true
 
     // An empty comment is sent on purpose: the server's own message ("Comment cannot be empty") is shown under the box
     setCommentError(null)
@@ -128,13 +134,15 @@ export function IssueDetails() {
         toast.error(err.error?.message || 'Could not post your comment.')
       }
     } finally {
+      commentLock.current = false
       setIsSubmittingComment(false)
     }
   }
 
   const handleStatusSubmit = async (e) => {
     e.preventDefault()
-    if (isUpdatingStatus || !nextStatus) return
+    if (statusLock.current || !nextStatus) return
+    statusLock.current = true
 
     setStatusErrors({})
     setIsUpdatingStatus(true)
@@ -152,6 +160,7 @@ export function IssueDetails() {
       }
       if (err.response?.status === 409) await loadIssue({ silent: true }) // someone else changed it first
     } finally {
+      statusLock.current = false
       setIsUpdatingStatus(false)
     }
   }
@@ -289,7 +298,7 @@ export function IssueDetails() {
                     value={nextStatus}
                     disabled={isUpdatingStatus}
                     error={statusErrors.status}
-                    onChange={(e) => setNextStatus(e.target.value)}
+                    onChange={(e) => setChosenStatus(e.target.value)}
                   >
                     {allowedStatuses.map((name) => (
                       <option key={name} value={name}>

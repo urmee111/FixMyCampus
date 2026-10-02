@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import React, { useState, useRef } from 'react'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { AuthShell } from '../../components/auth/AuthShell'
 import { FormField } from '../../components/ui/FormField'
 import { Input } from '../../components/ui/Input'
@@ -23,10 +23,15 @@ export function Signup() {
   })
   const [errors, setErrors] = useState({})
   const [isLoading, setIsLoading] = useState(false)
+  const inFlight = useRef(false) // blocks a second submit in the same instant
 
   const { signup } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  // The page the student was heading to before being sent to log in (path + filters, for example /report?location=Library)
+  const from = location.state?.from ? `${location.state.from.pathname}${location.state.from.search || ''}` : null
 
   const setField = (name, value) => {
     setFormData((current) => ({ ...current, [name]: value }))
@@ -35,7 +40,7 @@ export function Signup() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (isLoading) return
+    if (inFlight.current) return
 
     const validation = validateSignupForm(formData)
     if (!validation.isValid) {
@@ -44,6 +49,7 @@ export function Signup() {
     }
 
     setErrors({})
+    inFlight.current = true
     setIsLoading(true)
     try {
       const res = await signup({
@@ -55,7 +61,7 @@ export function Signup() {
       })
       const user = res.data.user
       toast.success(`Welcome, ${user.name}! Your account is ready.`, 'Account created')
-      navigate(user.role === 'admin' ? '/admin' : '/issues', { replace: true })
+      navigate(user.role === 'admin' ? '/admin' : from || '/issues', { replace: true })
     } catch (err) {
       // Messages for single inputs (name, email, password, adminCode...) go under the matching input,
       // anything else (server down, too many attempts...) becomes a toast.
@@ -66,6 +72,7 @@ export function Signup() {
         toast.error(err.error?.message || 'We could not create your account. Please try again.', 'Sign up failed')
       }
     } finally {
+      inFlight.current = false
       setIsLoading(false)
     }
   }

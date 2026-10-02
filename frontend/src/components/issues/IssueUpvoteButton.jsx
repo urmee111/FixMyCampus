@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { ChevronUp } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { toggleUpvote } from '../../api/issues'
@@ -13,6 +13,7 @@ export function IssueUpvoteButton({ issue, onUpvoteChange, size = 'md', classNam
   const [upvotes, setUpvotes] = useState(issue.upvoteCount)
   const [hasUpvoted, setHasUpvoted] = useState(issue.hasUpvoted)
   const [isMutating, setIsMutating] = useState(false)
+  const inFlight = useRef(false) // set at once (state updates need a render), so a double click can never send two requests
   const toast = useToast()
   const { user, isAdmin } = useAuth()
 
@@ -34,7 +35,8 @@ export function IssueUpvoteButton({ issue, onUpvoteChange, size = 'md', classNam
     e.preventDefault()
     e.stopPropagation()
 
-    if (isMutating || blockedReason) return
+    if (inFlight.current || blockedReason) return
+    inFlight.current = true
 
     // Optimistic update
     const prevUpvoted = hasUpvoted
@@ -59,6 +61,7 @@ export function IssueUpvoteButton({ issue, onUpvoteChange, size = 'md', classNam
       onUpvoteChange?.(prevCount, prevUpvoted)
       toast.error(err.error?.message || 'Could not register your upvote. Please try again.')
     } finally {
+      inFlight.current = false
       setIsMutating(false)
     }
   }

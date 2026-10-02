@@ -82,9 +82,10 @@ export function Landing() {
             <div className="w-8 h-8 rounded-xl bg-brand-600 flex items-center justify-center text-white">
               <LogoMark />
             </div>
-            <span className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
+            <span className="hidden min-[420px]:inline text-base font-bold tracking-tight text-slate-900 dark:text-white">
               FixMy<span className="text-brand-600 dark:text-brand-400">Campus</span>
             </span>
+            <span className="sr-only min-[420px]:hidden">FixMyCampus home</span>
           </Link>
 
           <nav aria-label="Account" className="flex items-center gap-2">

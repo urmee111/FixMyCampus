@@ -2,6 +2,7 @@
    Colours are OKLCH triples (L C H) so Tailwind can add opacity: oklch(var(--brand-600) / 0.5).
    The hex value of each colour is in the comment next to it. Light theme here, dark theme under .dark.
    - brand-600 is the primary colour and brand-700 its hover colour (the dark theme makes hover lighter).
+     Dark hover is #3472D8, not #3B82F6: white button text on #3B82F6 is only 3.68:1 (WCAG AA needs 4.5:1).
    - slate-* is the grey scale used for text, borders and surfaces. In the dark theme it is rebuilt around the dark palette
      (slate-100 = text, slate-400 = muted text, slate-800 = border, slate-900 = surface, slate-950 = page background). */
 
@@ -89,7 +90,7 @@
   --popover: 0.2204 0.0416 264.8270;  /* #111A2E */
   --popover-foreground: 0.9437 0.0154 257.1975;  /* #E6EDF7 */
   --primary: 0.5461 0.2152 262.8809;  /* #2563EB */
-  --primary-hover: 0.6231 0.1880 259.8145;  /* #3B82F6 */
+  --primary-hover: 0.5667 0.1693 259.8938;  /* #3472D8 */
   --primary-foreground: 1.0000 0.0000 0;  /* #FFFFFF */
   --secondary: 0.2750 0.0496 263.9304;  /* #1B2740 */
   --secondary-foreground: 0.8539 0.0312 258.9438;  /* #C3D0E4 */
@@ -111,7 +112,7 @@
   --brand-400: 0.7137 0.1434 254.6240;  /* #60A5FA */
   --brand-500: 0.6231 0.1880 259.8145;  /* #3B82F6 */
   --brand-600: 0.5461 0.2152 262.8809;  /* #2563EB */
-  --brand-700: 0.6231 0.1880 259.8145;  /* #3B82F6 */
+  --brand-700: 0.5667 0.1693 259.8938;  /* #3472D8 */
   --brand-800: 0.3791 0.1378 265.5222;  /* #1E3A8A */
   --brand-900: 0.2823 0.0874 267.9352;  /* #172554 */
   --brand-950: 0.2308 0.0689 267.6247;  /* #0F1A3D */

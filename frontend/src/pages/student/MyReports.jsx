@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { IssueCard } from '../../components/issues/IssueCard'
@@ -22,6 +22,7 @@ export function MyReports() {
   const [activeTab, setActiveTab] = useState('all')
   const [issueToDelete, setIssueToDelete] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const deleteLock = useRef(false) // set at once, so a double click can never send two requests
   const navigate = useNavigate()
   const toast = useToast()
   const { isAdmin } = useAuth()
@@ -52,7 +53,8 @@ export function MyReports() {
   const filteredIssues = issues.filter((issue) => activeTab === 'all' || issue.status === activeTab)
 
   const handleDelete = async () => {
-    if (!issueToDelete) return
+    if (!issueToDelete || deleteLock.current) return
+    deleteLock.current = true
     setIsDeleting(true)
     try {
       await deleteIssue(issueToDelete.id)
@@ -63,6 +65,7 @@ export function MyReports() {
       toast.error(err.error?.message || "We couldn't delete this report. Please try again.")
       setIssueToDelete(null)
     } finally {
+      deleteLock.current = false
       setIsDeleting(false)
     }
   }
@@ -79,15 +82,6 @@ export function MyReports() {
       <PageHeader
         title="My reports"
         description="Follow the issues you reported, from Open to Resolved."
-        actions={
-          <Button
-            variant="primary"
-            onClick={() => navigate('/report')}
-            leftIcon={<Plus className="w-4 h-4" aria-hidden="true" />}
-          >
-            Report an Issue
-          </Button>
-        }
       />
 
       {!error && !isLoading && <IssueSummaryBar counts={counts} />}
